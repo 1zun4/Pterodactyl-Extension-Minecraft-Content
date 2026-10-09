@@ -79,7 +79,7 @@ export default function InstalledList({ type }: { type: ContentType }) {
                 {canInstall && unknown > 0 && (
                     <Tooltip content='Look up files that were uploaded by hand, so they can be updated too.'>
                         <Button.Text size='small' isLoading={scanning.isPending} onClick={() => scanning.mutate()}>
-                            Recognise {unknown} files
+                            Recognise {unknown} {unknown === 1 ? 'file' : 'files'}
                         </Button.Text>
                     </Tooltip>
                 )}
