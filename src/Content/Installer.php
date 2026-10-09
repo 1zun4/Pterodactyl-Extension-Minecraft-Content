@@ -152,7 +152,17 @@ final readonly class Installer
         foreach ($modrinth as $item) {
             $version = $latest[$item['sha1']] ?? null;
 
-            if ($version !== null && $version['id'] !== $item['version'] && $version['file'] !== null) {
+            // Modrinth suggests betas too; installs prefer releases, so updates do as well.
+            if ($version !== null && ($version['type'] ?? 'release') !== 'release') {
+                try {
+                    $version = $this->newest($this->sources->modrinth->versions($type, $platform, (string) $item['project']));
+                } catch (Throwable) {
+                    continue;
+                }
+            }
+
+            // The same file can be listed under several versions, so the hash decides.
+            if ($version !== null && $version['file'] !== null && $version['id'] !== $item['version'] && $version['file']['sha1'] !== $item['sha1']) {
                 $updates[$item['path']] = $version;
             }
         }
