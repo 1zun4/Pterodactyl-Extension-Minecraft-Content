@@ -1,0 +1,11 @@
+{
+    "description": "Install plugins, mods, datapacks, resource packs and modpacks, and change the server version.",
+    "autoload": {
+        "psr-4": {
+            "MinecraftContent\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "MinecraftContentExtension"
+    }
+}

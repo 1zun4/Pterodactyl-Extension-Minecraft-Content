@@ -1,0 +1,64 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "minecraft-content",
+    "name": "Minecraft Content",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Install plugins, mods, datapacks, resource packs and modpacks, and change the server version.",
+    "author": "Izuna Seikatsu",
+    "provider": "MinecraftContent\\MinecraftContentProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "mcc",
+        "screens": [
+            {
+                "id": "plugins",
+                "area": "server",
+                "path": "plugins",
+                "nav": {
+                    "label": "Plugins",
+                    "icon": "plug",
+                    "order": 12
+                },
+                "permission": [
+                    "ext.minecraft-content.read"
+                ],
+                "when": {
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "runtime": true
+                }
+            },
+            {
+                "id": "mods",
+                "area": "server",
+                "path": "mods",
+                "nav": {
+                    "label": "Mods",
+                    "icon": "puzzle",
+                    "order": 12
+                },
+                "permission": [
+                    "ext.minecraft-content.read"
+                ],
+                "when": {
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "runtime": true
+                }
+            }
+        ]
+    },
+    "icon": "puzzle"
+}
