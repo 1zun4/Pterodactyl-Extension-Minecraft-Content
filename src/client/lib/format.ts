@@ -32,3 +32,9 @@ export const SOFTWARE_NAMES: Record<string, string> = {
 };
 
 export const softwareIcon = (software: string) => `https://s3.mcjars.app/icons/${software}.png`;
+
+export function formatDate(value: string): string {
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}

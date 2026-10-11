@@ -97,12 +97,15 @@ export interface SoftwareBuild {
     experimental: boolean;
     size: number;
     created: string | null;
+    changes: string[];
 }
 
 const base = (server: string) => `/api/client/servers/${server}/extensions/minecraft-content`;
 
 export const keys = {
     detect: (server: string) => ['minecraft-content', server, 'detect'] as const,
+    worlds: (server: string) => ['minecraft-content', server, 'worlds'] as const,
+    worldSearch: (server: string, query: string) => ['minecraft-content', server, 'world-search', query] as const,
     search: (server: string, type: ContentType, source: string, query: string, sort: Sort, page: number) =>
         ['minecraft-content', server, 'search', type, source, query, sort, page] as const,
     versions: (server: string, type: ContentType, source: string, project: string) =>
@@ -154,6 +157,17 @@ export const getSoftwareVersions = (server: string, type: string) => get<{ versi
 export const getSoftwareBuilds = (server: string, type: string, version: string) =>
     get<{ builds: SoftwareBuild[] }>(`${base(server)}/software/${type}/${encodeURIComponent(version)}`);
 
+export interface InstalledSoftware {
+    type: string;
+    version: string;
+    build: number;
+    name: string;
+    installed_at: string;
+}
+
+export const getCurrentSoftware = (server: string) =>
+    get<{ installed: InstalledSoftware | null; update: SoftwareBuild | null }>(`${base(server)}/software-current`);
+
 export const changeSoftware = async (server: string, input: { type: string; version: string; build: number | null; clean: boolean }) =>
     (await http.post<{ job: string }>(`${base(server)}/software`, input)).data;
 
@@ -163,3 +177,31 @@ export const installModpack = async (
 ) => (await http.post<{ job: string }>(`${base(server)}/modpacks`, input)).data;
 
 export const cancelJob = async (server: string) => (await http.delete(`${base(server)}/job`)).data;
+
+export interface World {
+    name: string;
+    active: boolean;
+    pending: boolean;
+    modified: string | null;
+    nether: string | null;
+    end: string | null;
+    split: boolean;
+}
+
+export interface WorldList {
+    active: string;
+    worlds: World[];
+    archives?: { name: string; size: number }[];
+    curseforge?: boolean;
+    state?: string;
+}
+
+export type WorldImport = { name: string; activate: boolean } & ({ source: 'url'; url: string } | { source: 'file'; file: string } | { source: 'curseforge'; project: string });
+
+export const getWorlds = (server: string) => get<WorldList>(`${base(server)}/worlds`);
+export const createWorld = async (server: string, input: { name: string; type: string; seed: string }) => (await http.post<WorldList>(`${base(server)}/worlds`, input)).data;
+export const activateWorld = async (server: string, name: string) => (await http.put<WorldList>(`${base(server)}/worlds/active`, { name })).data;
+export const deleteWorld = async (server: string, name: string) => (await http.delete<WorldList>(`${base(server)}/worlds`, { data: { name } })).data;
+export const resetDimension = async (server: string, name: string, dimension: 'nether' | 'end') => (await http.post<WorldList>(`${base(server)}/worlds/reset`, { name, dimension })).data;
+export const searchWorlds = (server: string, query: string) => get<{ total: number; projects: (Project & { downloadable: boolean })[] }>(`${base(server)}/worlds/search`, { query });
+export const importWorld = async (server: string, input: WorldImport) => (await http.post<{ job: string }>(`${base(server)}/worlds/import`, input)).data;

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Dialog, Label, Select, Switch, TitledGreyBox, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
-import { changeSoftware, getSoftwareBuilds, getSoftwareTypes, getSoftwareVersions, keys, type Platform } from '../api';
+import { changeSoftware, getCurrentSoftware, getSoftwareBuilds, getSoftwareTypes, getSoftwareVersions, keys, type Platform } from '../api';
 import { useServerIds } from '../hooks';
-import { SOFTWARE_NAMES, formatBytes, softwareIcon } from '../lib/format';
+import { SOFTWARE_NAMES, formatBytes, formatDate, softwareIcon } from '../lib/format';
 
 const GROUPS = [
     { id: 'plugins', label: 'Plugins' },
@@ -23,6 +23,9 @@ export default function VersionTab({ platform, busy }: { platform: Platform; bus
     const [confirming, setConfirming] = useState(false);
 
     const types = useQuery({ queryKey: keys.software(identifier), queryFn: () => getSoftwareTypes(identifier), staleTime: Infinity });
+    const current = useQuery({ queryKey: keys.software(identifier, 'current'), queryFn: () => getCurrentSoftware(identifier) });
+    const installed = current.data?.installed ?? null;
+    const update = current.data?.update ?? null;
     const versions = useQuery({ queryKey: keys.software(identifier, type), queryFn: () => getSoftwareVersions(identifier, type) });
     const builds = useQuery({
         queryKey: keys.software(identifier, type, version ?? ''),
@@ -53,10 +56,11 @@ export default function VersionTab({ platform, busy }: { platform: Platform; bus
     const chosenBuild = builds.data?.builds.find((item) => item.id === build);
 
     const change = useMutation({
-        mutationFn: () => changeSoftware(identifier, { type, version: version!, build, clean }),
+        mutationFn: (input?: { type: string; version: string; build: number }) => changeSoftware(identifier, input ? { ...input, clean: false } : { type, version: version!, build, clean }),
         onSuccess: () => {
             setConfirming(false);
             queryClient.invalidateQueries({ queryKey: keys.detect(identifier) });
+            queryClient.invalidateQueries({ queryKey: keys.software(identifier, 'current') });
         },
         onError: (error) => toast.error(httpErrorToHuman(error)),
     });
@@ -92,11 +96,30 @@ export default function VersionTab({ platform, busy }: { platform: Platform; bus
                             onChange={(value) => setBuild(Number(value))}
                             options={(builds.data?.builds ?? []).map((item, index) => ({
                                 value: item.id,
-                                label: `${item.name}${index === 0 ? ' (latest)' : ''}${item.experimental ? ' (experimental)' : ''}`,
+                                textLabel: item.name,
+                                label: [
+                                    item.name,
+                                    item.created ? `· ${formatDate(item.created)}` : '',
+                                    index === 0 ? '(latest)' : '',
+                                    item.experimental ? '(experimental)' : '',
+                                    installed?.build === item.id && installed.version === version && installed.type === type ? '(installed)' : '',
+                                ].filter(Boolean).join(' '),
                             }))}
                         />
                     </div>
                 </div>
+                {chosenBuild && chosenBuild.changes.length > 0 && (
+                    <div className='mcc:mt-3 mcc:rounded-sm mcc:bg-sunken mcc:px-3 mcc:py-2'>
+                        <p className='mcc:text-xs mcc:uppercase mcc:text-muted-foreground'>Changes in {chosenBuild.name}</p>
+                        <ul className='mcc:mt-1 mcc:list-disc mcc:pl-5 mcc:text-xs mcc:text-foreground'>
+                            {chosenBuild.changes.slice(0, 5).map((line) => (
+                                <li key={line} className='mcc:truncate'>
+                                    {line}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 <div className='mcc:mt-4'>
                     <Switch
                         label='Clean install'
@@ -124,9 +147,22 @@ export default function VersionTab({ platform, busy }: { platform: Platform; bus
                         <p className='mcc:text-foreground'>
                             {SOFTWARE_NAMES[platform.software] ?? platform.software} {platform.minecraft}
                         </p>
-                        <p className='mcc:text-xs mcc:text-muted-foreground'>{platform.detected ? 'Detected from the server files.' : 'Set by hand.'}</p>
+                        <p className='mcc:text-xs mcc:text-muted-foreground'>
+                            {installed ? `Build ${installed.name}, installed ${formatDate(installed.installed_at)}` : platform.detected ? 'Detected from the server files.' : 'Set by hand.'}
+                        </p>
                     </div>
                 </div>
+                {update && installed && (
+                    <div className='mcc:mt-4 mcc:rounded-sm mcc:border mcc:border-warning/25 mcc:bg-warning/10 mcc:p-3'>
+                        <p className='mcc:text-sm mcc:text-warning'>Build {update.name} is out.</p>
+                        {update.changes[0] && <p className='mcc:mt-1 mcc:truncate mcc:text-xs mcc:text-muted-foreground'>{update.changes[0]}</p>}
+                        {canChange && (
+                            <Button size='small' className='mcc:mt-2' disabled={busy} isLoading={change.isPending} onClick={() => change.mutate({ type: installed.type, version: installed.version, build: update.id })}>
+                                Update now
+                            </Button>
+                        )}
+                    </div>
+                )}
             </TitledGreyBox>
             <Dialog.Confirm
                 open={confirming}
@@ -134,7 +170,7 @@ export default function VersionTab({ platform, busy }: { platform: Platform; bus
                 title={`Install ${types.data?.types.find((item) => item.id === type)?.name ?? type} ${version}?`}
                 confirm='Install'
                 pending={change.isPending}
-                onConfirmed={() => change.mutate()}
+                onConfirmed={() => change.mutate(undefined)}
             >
                 The server stops while the new server software is downloaded and starts again afterwards if it was running. Plugins or mods for other
                 software stop loading.

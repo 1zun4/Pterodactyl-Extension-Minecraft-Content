@@ -61,6 +61,7 @@ final class McJars
             'size' => (int) ($build['jarSize'] ?? $build['zipSize'] ?? 0),
             'installation' => $build['installation'] ?? [],
             'created' => $build['created'] ?? null,
+            'changes' => array_values(array_slice(array_filter($build['changes'] ?? [], is_string(...)), 0, 10)),
         ], Api::get(self::API.'/builds/'.rawurlencode($type).'/'.rawurlencode($version), ttl: 1800)['builds'] ?? []);
     }
 

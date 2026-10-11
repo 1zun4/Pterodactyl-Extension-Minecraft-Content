@@ -11,6 +11,7 @@ use MinecraftContent\Platform\Detector;
 use MinecraftContent\Sources\Api;
 use MinecraftContent\Sources\McJars;
 use MinecraftContent\Sources\Sources;
+use MinecraftContent\Support\Properties;
 use MinecraftContent\Support\Urls;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Models\Backup;
@@ -75,6 +76,9 @@ final readonly class Steps
             'move', 'unwrap' => 'Copied files into place.',
             'variables' => 'Updated the startup variables.',
             'egg' => 'Switched to the matching egg.',
+            'rename' => 'Moved the archive into place.',
+            'place-world' => 'Copied the world into place.',
+            'level-name' => 'Made it the active world.',
             'loader' => 'Picked the server software.',
             'mrpack', 'curseforge' => 'Read the modpack.',
             default => 'Working...',
@@ -108,6 +112,9 @@ final readonly class Steps
             'unwrap' => $this->unwrap($server, $step),
             'variables' => $this->variables($server, $step),
             'egg' => $this->egg($server, $step),
+            'rename' => $this->renameFile($server, $step),
+            'place-world' => $this->placeWorld($server, $step),
+            'level-name' => $this->levelName($server, $step),
             'loader' => $this->loader($step),
             'mrpack' => $this->mrpack($server, $step, $plan),
             'curseforge' => $this->curseForge($server, $step, $plan),
@@ -371,6 +378,55 @@ final readonly class Steps
         return StepResult::done();
     }
 
+    /** @param array<string, mixed> $step */
+    private function renameFile(Server $server, array $step): StepResult
+    {
+        $this->panel->rename($server, '/', mb_trim((string) $step['from'], '/'), mb_trim((string) $step['to'], '/'));
+
+        return StepResult::done();
+    }
+
+    /**
+     * Finds the folder with level.dat in an unpacked archive, which is often wrapped in one extra folder.
+     *
+     * @param  array<string, mixed>  $step
+     */
+    private function placeWorld(Server $server, array $step): StepResult
+    {
+        $from = mb_trim((string) $step['from'], '/');
+        $to = mb_trim((string) $step['to'], '/');
+        $source = null;
+
+        foreach ([$from, ...array_map(static fn (array $entry): string => "{$from}/{$entry['name']}", array_filter($this->panel->list($server, $from), static fn (array $entry): bool => ! $entry['file']))] as $candidate) {
+            if (collect($this->panel->list($server, $candidate))->contains('name', 'level.dat')) {
+                $source = $candidate;
+
+                break;
+            }
+        }
+
+        if ($source === null) {
+            throw new RuntimeException('The archive contains no Minecraft world (no level.dat).');
+        }
+
+        if ($this->panel->exists($server, $to)) {
+            throw new RuntimeException("A folder called {$to} already exists.");
+        }
+
+        $this->panel->rename($server, '/', $source, $to);
+
+        return StepResult::done();
+    }
+
+    /** @param array<string, mixed> $step */
+    private function levelName(Server $server, array $step): StepResult
+    {
+        $properties = $this->panel->read($server, 'server.properties', 256 * 1024) ?? '';
+        $this->panel->write($server, 'server.properties', Properties::patch($properties, ['level-name' => (string) $step['name']]), log: false);
+
+        return StepResult::done();
+    }
+
     /**
      * Moves the server to the egg made for its new software, so the startup command, a reinstall and
      * the egg shown on the Startup page match what is installed. Eggs that cannot start a plain
@@ -437,6 +493,14 @@ final readonly class Steps
             'environment' => ['SERVER_JARFILE' => 'server.jar', 'MINECRAFT_VERSION' => $step['minecraft'], 'MC_VERSION' => $step['minecraft'], 'VANILLA_VERSION' => $step['minecraft'], 'BUILD_NUMBER' => 'latest'],
             'java' => $this->mcjars->java($type, (string) $step['minecraft']),
         ];
+        // Remembered so the panel can tell when a newer build is out.
+        $steps[] = ['op' => 'track', 'key' => 'software', 'value' => [
+            'type' => $type,
+            'version' => (string) $step['minecraft'],
+            'build' => $build['id'],
+            'name' => $build['name'],
+            'installed_at' => now()->toAtomString(),
+        ]];
 
         return StepResult::then($steps, "Installing {$type} {$step['minecraft']}.");
     }

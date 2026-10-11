@@ -6,6 +6,7 @@ namespace MinecraftContent\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use MinecraftContent\Content\Installed;
 use MinecraftContent\Panel\Panel;
 use MinecraftContent\Plans\Planner;
 use MinecraftContent\Plans\Plans;
@@ -24,6 +25,7 @@ final class SoftwareController extends Controller
         private readonly Plans $plans,
         private readonly Panel $panel,
         private readonly Detector $detector,
+        private readonly Installed $installed,
     ) {}
 
     public function types(Request $request, Server $server): JsonResponse
@@ -50,6 +52,27 @@ final class SoftwareController extends Controller
             static fn (array $build): array => array_diff_key($build, ['installation' => true]),
             array_slice($this->mcjars->builds($type, $version), 0, 50),
         )]);
+    }
+
+    /** The build installed through this extension and a newer stable build of the same version, if there is one. */
+    public function current(Request $request, Server $server): JsonResponse
+    {
+        $this->authorize($request, $server, 'read');
+
+        return $this->attempt(function () use ($server): array {
+            $installed = $this->installed->all($server)['software'];
+            $platform = $this->detector->detect($server);
+
+            // A jar swapped by hand makes the remembered build meaningless.
+            if ($installed === null || mb_strtolower((string) $installed['type']) !== $platform->software || (string) $installed['version'] !== $platform->minecraft) {
+                return ['installed' => null, 'update' => null];
+            }
+
+            $latest = collect($this->mcjars->builds((string) $installed['type'], (string) $installed['version']))->firstWhere('experimental', false);
+            $update = $latest !== null && $latest['id'] !== (int) $installed['build'] ? array_diff_key($latest, ['installation' => true]) : null;
+
+            return ['installed' => $installed, 'update' => $update];
+        });
     }
 
     public function change(Request $request, Server $server): JsonResponse

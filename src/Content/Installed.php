@@ -17,7 +17,7 @@ final readonly class Installed
 
     public function __construct(private Panel $panel) {}
 
-    /** @return array{items: list<array<string, mixed>>, modpack: array<string, mixed>|null, resource_pack: array<string, mixed>|null} */
+    /** @return array{items: list<array<string, mixed>>, modpack: array<string, mixed>|null, resource_pack: array<string, mixed>|null, software: array<string, mixed>|null} */
     public function all(Server $server): array
     {
         $data = $this->panel->readJson($server, self::FILE) ?? [];
@@ -26,6 +26,7 @@ final readonly class Installed
             'items' => array_values(array_filter($data['items'] ?? [], is_array(...))),
             'modpack' => is_array($data['modpack'] ?? null) ? $data['modpack'] : null,
             'resource_pack' => is_array($data['resource_pack'] ?? null) ? $data['resource_pack'] : null,
+            'software' => is_array($data['software'] ?? null) ? $data['software'] : null,
         ];
     }
 

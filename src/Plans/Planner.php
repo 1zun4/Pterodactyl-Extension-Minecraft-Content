@@ -42,6 +42,30 @@ final readonly class Planner
     }
 
     /**
+     * Unpacks a world archive from a link or from a file on the server into its own folder.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function world(string $name, bool $activate, ?string $url, ?string $file, int $size = 0): array
+    {
+        $target = self::WORK.'/world';
+        $archive = $url !== null ? 'world.zip' : basename((string) $file);
+
+        return array_values(array_filter([
+            ['op' => 'clear', 'paths' => [self::WORK]],
+            ['op' => 'mkdir', 'path' => $target],
+            $url !== null
+                ? ['op' => 'pull', 'url' => $url, 'directory' => $target, 'filename' => $archive, 'size' => $size]
+                : ['op' => 'rename', 'from' => (string) $file, 'to' => "{$target}/{$archive}"],
+            ['op' => 'decompress', 'root' => $target, 'file' => $archive],
+            ['op' => 'clear', 'paths' => ["{$target}/{$archive}"]],
+            ['op' => 'place-world', 'from' => $target, 'to' => $name],
+            $activate ? ['op' => 'level-name', 'name' => $name] : null,
+            ['op' => 'clear', 'paths' => [self::WORK]],
+        ]));
+    }
+
+    /**
      * @param  array{wipe: bool, backup: bool, start: bool}  $options
      * @return array{label: string, steps: list<array<string, mixed>>}
      */

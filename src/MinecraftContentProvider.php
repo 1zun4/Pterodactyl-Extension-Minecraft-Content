@@ -26,6 +26,7 @@ class MinecraftContentProvider extends ExtensionProvider
             'install' => 'Install, update and remove plugins, mods, datapacks and resource packs.',
             'modpacks' => 'Install modpacks. This replaces the server software and can delete files.',
             'version' => 'Change the server software and Minecraft version.',
+            'worlds' => 'Create, switch, reset, delete and install worlds.',
         ]);
 
         $this->registerSettings(new ExtensionSettingsDefinition($this->settings(), [

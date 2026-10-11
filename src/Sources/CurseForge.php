@@ -20,6 +20,8 @@ final readonly class CurseForge implements Source
 
     private const array CLASSES = ['mod' => 6, 'plugin' => 5, 'modpack' => 4471, 'resourcepack' => 12, 'datapack' => 6945];
 
+    private const int WORLDS = 17;
+
     private const array LOADERS = ['forge' => 1, 'fabric' => 4, 'quilt' => 5, 'neoforge' => 6];
 
     private const array SORTS = ['relevance' => 2, 'downloads' => 6, 'updated' => 3, 'newest' => 11];
@@ -84,6 +86,36 @@ final readonly class CurseForge implements Source
         }
 
         return array_map($this->file(...), $this->get('/mods/'.(int) $project.'/files', $parameters)['data'] ?? []);
+    }
+
+    /**
+     * Downloadable worlds (maps) for the server's Minecraft version.
+     *
+     * @return array{total: int, projects: list<array<string, mixed>>}
+     */
+    public function worlds(Platform $platform, string $query, int $page): array
+    {
+        $result = $this->get('/mods/search', array_filter([
+            'gameId' => self::MINECRAFT,
+            'classId' => self::WORLDS,
+            'searchFilter' => $query,
+            'sortField' => 2,
+            'sortOrder' => 'desc',
+            'pageSize' => 20,
+            'index' => max(0, $page - 1) * 20,
+            'gameVersion' => $platform->minecraft ?? '',
+        ], static fn (mixed $value): bool => $value !== ''));
+
+        return [
+            'total' => min(10000, (int) ($result['pagination']['totalCount'] ?? 0)),
+            'projects' => array_map(fn (array $mod): array => $this->normalizeProject($mod) + ['downloadable' => ($mod['allowModDistribution'] ?? null) !== false], $result['data'] ?? []),
+        ];
+    }
+
+    /** @return list<array<string, mixed>> Newest first; `file` is null when the author does not allow third-party downloads. */
+    public function worldFiles(string $project): array
+    {
+        return array_map($this->file(...), $this->get('/mods/'.(int) $project.'/files', ['pageSize' => 20])['data'] ?? []);
     }
 
     public function project(string $project): array
