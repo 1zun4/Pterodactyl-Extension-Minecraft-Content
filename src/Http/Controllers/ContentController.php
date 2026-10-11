@@ -6,6 +6,7 @@ namespace MinecraftContent\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use MinecraftContent\Content\ContentType;
 use MinecraftContent\Content\Installed;
@@ -38,7 +39,9 @@ final class ContentController extends Controller
                 'sources' => $this->sources->available($type, $platform),
             ], ContentType::cases())),
             'software' => array_keys(Platform::SOFTWARE),
-            'modpack' => $installed['modpack'],
+            'modpack' => $installed['modpack'] === null ? null : Arr::except($installed['modpack'], 'files') + [
+                'file_count' => isset($installed['modpack']['files']) ? count($installed['modpack']['files']) : null,
+            ],
             'resource_pack' => $installed['resource_pack'],
             'job' => $this->plans->active($server),
         ]);

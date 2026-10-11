@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Dialog, Switch, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
-import { installModpack, type Project, type SourceName, type Tracked, type Version } from '../api';
+import { installModpack, uninstallModpack, type Project, type SourceName, type Tracked, type Version } from '../api';
+import { formatDate } from '../lib/format';
 import { useServerIds } from '../hooks';
 import Browse from '../content/Browse';
 import VersionsDialog from '../content/VersionsDialog';
@@ -14,19 +15,42 @@ export default function ModpacksTab({ current, sources, busy }: { current: Track
     const [project, setProject] = useState<Project | null>(null);
     const [choice, setChoice] = useState<{ project: Project; version: Version } | null>(null);
     const [options, setOptions] = useState({ backup: true, wipe: true, start: true });
+    const [removing, setRemoving] = useState(false);
+    const [removalBackup, setRemovalBackup] = useState(true);
+    const tracked = typeof current?.file_count === 'number';
+    const onError = (error: unknown) => toast.error(httpErrorToHuman(error));
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ['minecraft-content', identifier] });
 
     const installation = useMutation({
         mutationFn: () => installModpack(identifier, { source: choice!.project.source, project: choice!.project.id, version: choice!.version.id, ...options }),
-        onSuccess: () => {
-            setChoice(null);
-            queryClient.invalidateQueries({ queryKey: ['minecraft-content', identifier] });
-        },
-        onError: (error) => toast.error(httpErrorToHuman(error)),
+        onSuccess: () => (setChoice(null), refresh()),
+        onError,
     });
+    const removal = useMutation({ mutationFn: () => uninstallModpack(identifier, removalBackup), onSuccess: () => (setRemoving(false), refresh()), onError });
 
     return (
         <div className='mcc:grid mcc:gap-4'>
-            <CurrentCard title='Installed modpack' empty='No modpack was installed from the panel.' item={current} />
+            <CurrentCard
+                title='Installed modpack'
+                empty='No modpack was installed from the panel.'
+                item={current}
+                hint={current ? [tracked && `${current.file_count} files`, `installed ${formatDate(current.installed_at)}`].filter(Boolean).join(' · ') : undefined}
+                action={
+                    current &&
+                    canInstall && (
+                        <div className='mcc:flex mcc:shrink-0 mcc:gap-2'>
+                            <Button.Text size='xsmall' disabled={busy} onClick={() => setProject(asProject(current))}>
+                                Switch version
+                            </Button.Text>
+                            {tracked && (
+                                <Button.Danger size='xsmall' disabled={busy} onClick={() => setRemoving(true)}>
+                                    Uninstall
+                                </Button.Danger>
+                            )}
+                        </div>
+                    )
+                }
+            />
             <Browse
                 type='modpack'
                 sources={sources}
@@ -54,7 +78,10 @@ export default function ModpacksTab({ current, sources, busy }: { current: Track
                         <p className='mcc:text-sm mcc:text-muted-foreground'>
                             {choice.version.name} for {[choice.version.loaders.join(', '), choice.version.game_versions.join(', ')].filter(Boolean).join(' ')}
                         </p>
-                        <Alert type='warning'>The server stops, and its server software is replaced by the one the modpack needs. Worlds are kept.</Alert>
+                        <Alert type='warning'>
+                            The server stops, and its server software is replaced by the one the modpack needs. Worlds are kept.
+                            {tracked && ` The ${current!.file_count} files of ${current!.name} are removed first.`}
+                        </Alert>
                         <Switch label='Back up first' description='Needs a free backup slot.' checked={options.backup} onChange={(backup) => setOptions((current) => ({ ...current, backup }))} />
                         <Switch label='Remove old mods and configs' description='Deletes mods, config, libraries and similar folders first.' checked={options.wipe} onChange={(wipe) => setOptions((current) => ({ ...current, wipe }))} />
                         <Switch label='Start the server when done' checked={options.start} onChange={(start) => setOptions((current) => ({ ...current, start }))} />
@@ -69,6 +96,23 @@ export default function ModpacksTab({ current, sources, busy }: { current: Track
                     </Button>
                 </Dialog.Footer>
             </Dialog>
+            <Dialog.Confirm
+                open={removing}
+                onClose={() => setRemoving(false)}
+                title={`Uninstall ${current?.name ?? ''}`}
+                confirm='Uninstall'
+                pending={removal.isPending}
+                onConfirmed={() => removal.mutate()}
+            >
+                <p className='mcc:mb-4'>
+                    The server stops and the {current?.file_count} files the pack added are deleted. Worlds, your own files and the server software stay.
+                </p>
+                <Switch label='Back up first' description='Needs a free backup slot.' checked={removalBackup} onChange={setRemovalBackup} />
+            </Dialog.Confirm>
         </div>
     );
+}
+
+function asProject(tracked: Tracked): Project {
+    return { source: tracked.source, id: tracked.project, slug: '', name: tracked.name, author: '', description: '', icon: tracked.icon, downloads: 0, url: tracked.url ?? '' };
 }

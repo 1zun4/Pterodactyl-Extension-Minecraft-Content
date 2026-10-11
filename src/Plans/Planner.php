@@ -66,10 +66,13 @@ final readonly class Planner
     }
 
     /**
+     * The files of the previous pack go first, so a version switch leaves no stale mods behind.
+     *
      * @param  array{wipe: bool, backup: bool, start: bool}  $options
+     * @param  list<string>  $previous
      * @return array{label: string, steps: list<array<string, mixed>>}
      */
-    public function modpack(Platform $platform, string $source, string $project, string $version, array $options): array
+    public function modpack(Platform $platform, string $source, string $project, string $version, array $options, array $previous = []): array
     {
         $details = $this->sources->get($source)->project($project);
         $chosen = collect($this->sources->get($source)->versions(ContentType::Modpack, $platform, $project))->firstWhere('id', $version)
@@ -79,6 +82,7 @@ final readonly class Planner
             ['op' => 'stop'],
             $options['backup'] ? ['op' => 'backup', 'name' => "Before {$details['name']}"] : null,
             $options['wipe'] ? ['op' => 'clear', 'paths' => self::PACK_FOLDERS] : null,
+            ...$this->removal($previous),
             ['op' => 'clear', 'paths' => [self::WORK]],
             ['op' => 'mkdir', 'path' => self::WORK],
         ]));
@@ -92,7 +96,7 @@ final readonly class Planner
 
         array_push($steps, ...array_values(array_filter([
             ['op' => 'clear', 'paths' => [self::WORK]],
-            ['op' => 'track', 'key' => 'modpack', 'value' => [
+            ['op' => 'track', 'key' => 'modpack', 'files' => true, 'value' => [
                 'source' => $source,
                 'project' => $details['id'],
                 'version' => $chosen['id'],
@@ -106,6 +110,44 @@ final readonly class Planner
         ])));
 
         return ['label' => "Installing {$details['name']} {$chosen['name']}", 'steps' => $steps];
+    }
+
+    /**
+     * Removes exactly the files the pack placed. The server software stays.
+     *
+     * @param  list<string>  $files
+     * @return list<array<string, mixed>>
+     */
+    public function uninstall(string $name, array $files, bool $backup): array
+    {
+        return array_values(array_filter([
+            ['op' => 'stop'],
+            $backup ? ['op' => 'backup', 'name' => "Before removing {$name}"] : null,
+            ...$this->removal($files),
+            ['op' => 'track', 'key' => 'modpack', 'value' => null],
+            ['op' => 'redetect'],
+        ]));
+    }
+
+    /**
+     * @param  list<string>  $files
+     * @return list<array<string, mixed>>
+     */
+    private function removal(array $files): array
+    {
+        $files = array_values(array_filter(
+            array_map(static fn (mixed $path): ?string => is_string($path) ? Steps::safePath($path) : null, $files),
+            static fn (?string $path): bool => $path !== null && ! in_array($path, self::KEEP, true),
+        ));
+
+        if ($files === []) {
+            return [];
+        }
+
+        return [
+            ...array_map(static fn (array $chunk): array => ['op' => 'clear', 'paths' => $chunk], array_chunk($files, 300)),
+            ['op' => 'forget', 'paths' => $files],
+        ];
     }
 
     /**
@@ -142,7 +184,7 @@ final readonly class Planner
                 ['op' => 'pull', 'url' => $serverPack['url'], 'directory' => self::WORK.'/server', 'filename' => 'server.zip', 'size' => $serverPack['size']],
                 ['op' => 'decompress', 'root' => self::WORK.'/server', 'file' => 'server.zip'],
                 ['op' => 'clear', 'paths' => [self::WORK.'/server/server.zip']],
-                ['op' => 'unwrap', 'from' => self::WORK.'/server', 'to' => '', 'keep' => self::KEEP],
+                ['op' => 'unwrap', 'from' => self::WORK.'/server', 'to' => '', 'keep' => self::KEEP, 'pack' => true],
             ];
         }
 
@@ -176,7 +218,7 @@ final readonly class Planner
                 continue;
             }
 
-            $steps[] = ['op' => 'pull', 'url' => $file['url'], 'directory' => $directory, 'filename' => basename($path), 'size' => (int) ($file['size'] ?? 0)];
+            $steps[] = ['op' => 'pull', 'url' => $file['url'], 'directory' => $directory, 'filename' => basename($path), 'size' => (int) ($file['size'] ?? 0), 'pack' => true];
         }
 
         $targets = collect($manifest['targets'] ?? []);

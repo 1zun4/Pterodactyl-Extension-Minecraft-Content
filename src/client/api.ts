@@ -21,6 +21,8 @@ export interface Tracked {
     icon: string | null;
     url: string | null;
     installed_at: string;
+    /** Modpacks only: how many files the pack placed, or null when it was installed before files were tracked. */
+    file_count?: number | null;
 }
 
 export interface Detection {
@@ -175,6 +177,8 @@ export const installModpack = async (
     server: string,
     input: { source: string; project: string; version: string; wipe: boolean; backup: boolean; start: boolean }
 ) => (await http.post<{ job: string }>(`${base(server)}/modpacks`, input)).data;
+
+export const uninstallModpack = async (server: string, backup: boolean) => (await http.delete<{ job: string }>(`${base(server)}/modpacks`, { data: { backup } })).data;
 
 export const cancelJob = async (server: string) => (await http.delete(`${base(server)}/job`)).data;
 

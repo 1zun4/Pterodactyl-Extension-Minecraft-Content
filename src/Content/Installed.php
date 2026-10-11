@@ -61,6 +61,16 @@ final readonly class Installed
         $this->save($server, $data);
     }
 
+    /** @param list<string> $paths Files or folders; items inside a folder are forgotten too. */
+    public function forgetUnder(Server $server, array $paths): void
+    {
+        $data = $this->all($server);
+        $data['items'] = array_values(array_filter($data['items'], static fn (array $item): bool => ! collect($paths)->contains(
+            static fn (string $path): bool => $item['path'] === $path || str_starts_with((string) $item['path'], $path.'/'),
+        )));
+        $this->save($server, $data);
+    }
+
     public function move(Server $server, string $from, string $to): void
     {
         $data = $this->all($server);

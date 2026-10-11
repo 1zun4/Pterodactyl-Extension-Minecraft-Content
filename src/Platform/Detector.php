@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MinecraftContent\Platform;
 
 use Illuminate\Support\Facades\Cache;
+use MinecraftContent\Content\Installed;
 use MinecraftContent\Panel\Panel;
 use Pterodactyl\Facades\Extensions;
 use Pterodactyl\Models\Server;
@@ -12,6 +13,7 @@ use Throwable;
 
 /**
  * Works out the server software from the files it leaves behind, and the Minecraft version from variables, folders and logs.
+ * Software installed from the panel wins over leftovers of the previous one (a fresh Fabric server has no marker until it starts).
  */
 final readonly class Detector
 {
@@ -19,7 +21,7 @@ final readonly class Detector
 
     private const string VERSION = '/^\d+\.\d+(\.\d+)?$/';
 
-    public function __construct(private Panel $panel) {}
+    public function __construct(private Panel $panel, private Installed $installed) {}
 
     public function detect(Server $server): Platform
     {
@@ -63,6 +65,8 @@ final readonly class Detector
     private function software(Server $server, array $root): string
     {
         $has = static fn (string ...$names): bool => array_intersect($names, $root) !== [];
+        $type = $this->installed->all($server)['software']['type'] ?? null;
+        $installed = collect(Platform::SOFTWARE)->search(static fn (array $software): bool => $software['mcjars'] === $type);
 
         return match (true) {
             $has('velocity.toml') => 'velocity',
@@ -71,6 +75,7 @@ final readonly class Detector
             $this->panel->exists($server, 'libraries/net/minecraftforge') => 'forge',
             $has('quilt-server-launch.jar', '.quilt') => 'quilt',
             $has('.fabric', 'fabric-server-launch.jar', 'fabric-server-launcher.properties') => 'fabric',
+            $installed !== false => (string) $installed,
             $has('purpur.yml') => 'purpur',
             $has('paper.yml') || $this->panel->exists($server, 'config/paper-global.yml') => $this->isFolia($server) ? 'folia' : 'paper',
             $has('spigot.yml', 'bukkit.yml') => 'spigot',

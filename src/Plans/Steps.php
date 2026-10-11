@@ -81,6 +81,7 @@ final readonly class Steps
             'level-name' => 'Made it the active world.',
             'loader' => 'Picked the server software.',
             'mrpack', 'curseforge' => 'Read the modpack.',
+            'forget' => 'Updated the list of installed files.',
             default => 'Working...',
         };
     }
@@ -106,9 +107,9 @@ final readonly class Steps
             'backup' => $this->backup($server, $step, $plan),
             'clear' => $this->clear($server, $step),
             'mkdir' => $this->mkdir($server, $step),
-            'pull' => $this->pull($server, $step),
+            'pull' => $this->pull($server, $step, $plan),
             'decompress' => $this->decompress($server, $step),
-            'move' => $this->move($server, $step),
+            'move' => $this->move($server, $step, $plan),
             'unwrap' => $this->unwrap($server, $step),
             'variables' => $this->variables($server, $step),
             'egg' => $this->egg($server, $step),
@@ -118,8 +119,9 @@ final readonly class Steps
             'loader' => $this->loader($step),
             'mrpack' => $this->mrpack($server, $step, $plan),
             'curseforge' => $this->curseForge($server, $step, $plan),
-            'track' => $this->track($server, $step),
+            'track' => $this->track($server, $step, $plan),
             'track-items' => $this->trackItems($server, $step),
+            'forget' => $this->forget($server, $step),
             'redetect' => $this->redetect($server),
             default => throw new RuntimeException("Unknown step \"{$step['op']}\"."),
         };
@@ -222,14 +224,21 @@ final readonly class Steps
         return StepResult::done();
     }
 
-    /** @param array<string, mixed> $step */
-    private function pull(Server $server, array $step): StepResult
+    /**
+     * @param  array<string, mixed>  $step
+     * @param  array<string, mixed>  $plan
+     */
+    private function pull(Server $server, array $step, array &$plan): StepResult
     {
         $path = mb_trim("{$step['directory']}/{$step['filename']}", '/');
         $size = (int) ($step['size'] ?? 0);
         $step['url'] = Urls::direct((string) $step['url']);
 
         if (! isset($step['deadline'])) {
+            if ($step['pack'] ?? false) {
+                $plan['files'][] = $path;
+            }
+
             if ($size < self::FOREGROUND_LIMIT) {
                 try {
                     $this->panel->pull($server, $step['url'], (string) $step['directory'], (string) $step['filename'], true, log: false);
@@ -303,10 +312,12 @@ final readonly class Steps
 
     /**
      * Merges one directory into another. Missing folders move in one rename; existing ones are merged file by file.
+     * Modpack moves remember what they placed, so the pack can be removed again.
      *
      * @param  array<string, mixed>  $step
+     * @param  array<string, mixed>  $plan
      */
-    private function move(Server $server, array $step): StepResult
+    private function move(Server $server, array $step, array &$plan): StepResult
     {
         $from = mb_trim((string) $step['from'], '/');
         $to = mb_trim((string) $step['to'], '/');
@@ -330,7 +341,7 @@ final readonly class Steps
             }
 
             if (! $entry['file'] && $current !== null && ! $current['file']) {
-                $next[] = ['op' => 'move', 'from' => $source, 'to' => $target];
+                $next[] = ['op' => 'move', 'from' => $source, 'to' => $target, 'pack' => $step['pack'] ?? false];
 
                 continue;
             }
@@ -340,6 +351,10 @@ final readonly class Steps
             }
 
             $this->panel->rename($server, '/', $source, $target);
+
+            if ($step['pack'] ?? false) {
+                $plan['files'][] = $target;
+            }
         }
 
         return StepResult::then($next);
@@ -355,7 +370,7 @@ final readonly class Steps
         $entries = $this->panel->list($server, (string) $step['from']);
         $from = count($entries) === 1 && ! $entries[0]['file'] ? "{$step['from']}/{$entries[0]['name']}" : (string) $step['from'];
 
-        return StepResult::then([['op' => 'move', 'from' => $from, 'to' => $step['to'], 'keep' => $step['keep'] ?? []]]);
+        return StepResult::then([['op' => 'move', 'from' => $from, 'to' => $step['to'], 'keep' => $step['keep'] ?? [], 'pack' => $step['pack'] ?? false]]);
     }
 
     /** @param array<string, mixed> $step */
@@ -533,7 +548,7 @@ final readonly class Steps
                 continue;
             }
 
-            $steps[] = ['op' => 'pull', 'url' => $url, 'directory' => dirname($path) === '.' ? '' : dirname($path), 'filename' => basename($path), 'size' => (int) ($file['fileSize'] ?? 0)];
+            $steps[] = ['op' => 'pull', 'url' => $url, 'directory' => dirname($path) === '.' ? '' : dirname($path), 'filename' => basename($path), 'size' => (int) ($file['fileSize'] ?? 0), 'pack' => true];
 
             if (preg_match('#^https://cdn\.modrinth\.com/data/(\w+)/versions/(\w+)/#', $url, $match) === 1 && in_array(dirname($path), ['mods', 'plugins'], true)) {
                 $tracked[] = ['path' => $path, 'project' => $match[1], 'version' => $match[2], 'sha1' => $file['hashes']['sha1'] ?? null];
@@ -541,8 +556,8 @@ final readonly class Steps
         }
 
         $steps[] = ['op' => 'track-items', 'items' => $this->modrinthItems($tracked)];
-        $steps[] = ['op' => 'move', 'from' => "{$root}/overrides", 'to' => '', 'keep' => $step['keep'] ?? []];
-        $steps[] = ['op' => 'move', 'from' => "{$root}/server-overrides", 'to' => '', 'keep' => $step['keep'] ?? []];
+        $steps[] = ['op' => 'move', 'from' => "{$root}/overrides", 'to' => '', 'keep' => $step['keep'] ?? [], 'pack' => true];
+        $steps[] = ['op' => 'move', 'from' => "{$root}/server-overrides", 'to' => '', 'keep' => $step['keep'] ?? [], 'pack' => true];
 
         $dependencies = $index['dependencies'] ?? [];
         $loader = collect(self::LOADERS)->keys()->first(static fn (string $name): bool => isset($dependencies[$name]));
@@ -580,14 +595,14 @@ final readonly class Steps
                         continue;
                     }
 
-                    $steps[] = ['op' => 'pull', 'url' => $version['file']['url'], 'directory' => 'mods', 'filename' => $version['file']['name'], 'size' => $version['file']['size']];
+                    $steps[] = ['op' => 'pull', 'url' => $version['file']['url'], 'directory' => 'mods', 'filename' => $version['file']['name'], 'size' => $version['file']['size'], 'pack' => true];
                     $versions[] = $version;
                 }
             }
 
             $steps[] = ['op' => 'track-items', 'items' => $this->curseForgeItems($versions)];
 
-            $steps[] = ['op' => 'move', 'from' => "{$root}/".($manifest['overrides'] ?? 'overrides'), 'to' => ''];
+            $steps[] = ['op' => 'move', 'from' => "{$root}/".($manifest['overrides'] ?? 'overrides'), 'to' => '', 'pack' => true];
         }
 
         $minecraft = (string) ($manifest['minecraft']['version'] ?? '');
@@ -600,10 +615,27 @@ final readonly class Steps
         return StepResult::then($steps);
     }
 
-    /** @param array<string, mixed> $step */
-    private function track(Server $server, array $step): StepResult
+    /**
+     * @param  array<string, mixed>  $step
+     * @param  array<string, mixed>  $plan
+     */
+    private function track(Server $server, array $step, array $plan): StepResult
     {
-        $this->installed->set($server, (string) $step['key'], $step['value']);
+        $value = $step['value'];
+
+        if (is_array($value) && ($step['files'] ?? false)) {
+            $value['files'] = array_values(array_unique($plan['files'] ?? []));
+        }
+
+        $this->installed->set($server, (string) $step['key'], $value);
+
+        return StepResult::done();
+    }
+
+    /** @param array<string, mixed> $step */
+    private function forget(Server $server, array $step): StepResult
+    {
+        $this->installed->forgetUnder($server, $step['paths']);
 
         return StepResult::done();
     }

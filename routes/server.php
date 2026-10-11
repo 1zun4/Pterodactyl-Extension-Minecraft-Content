@@ -31,6 +31,7 @@ Route::get('/software/{type}/{version}', [SoftwareController::class, 'builds']);
 Route::post('/software', [SoftwareController::class, 'change']);
 
 Route::post('/modpacks', [ModpackController::class, 'store']);
+Route::delete('/modpacks', [ModpackController::class, 'destroy']);
 
 Route::get('/worlds', [WorldController::class, 'index']);
 Route::post('/worlds', [WorldController::class, 'create']);
