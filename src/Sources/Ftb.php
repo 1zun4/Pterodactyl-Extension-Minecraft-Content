@@ -6,6 +6,7 @@ namespace MinecraftContent\Sources;
 
 use MinecraftContent\Content\ContentType;
 use MinecraftContent\Platform\Platform;
+use MinecraftContent\Support\Text;
 
 /**
  * Feed The Beast modpacks.
@@ -73,7 +74,23 @@ final class Ftb implements Source
             'description' => (string) ($pack['synopsis'] ?? ''),
             'icon' => collect($pack['art'] ?? [])->firstWhere('type', 'square')['url'] ?? null,
             'downloads' => (int) ($pack['installs'] ?? 0),
+            'followers' => null,
             'url' => 'https://www.feed-the-beast.com/modpacks/'.($pack['slug'] ?? $pack['id']),
+        ];
+    }
+
+    public function details(string $project): array
+    {
+        $pack = $this->pack($project);
+
+        return [
+            'description' => Text::plain((string) ($pack['description'] ?? $pack['synopsis'] ?? '')),
+            'followers' => null,
+            'updated' => isset($pack['updated']) ? date(DATE_ATOM, (int) $pack['updated']) : null,
+            'license' => null,
+            'categories' => array_values(array_filter(array_column($pack['tags'] ?? [], 'name'), is_string(...))),
+            'links' => Text::links(array_column($pack['links'] ?? [], 'link', 'name')),
+            'gallery' => Text::gallery(array_map(static fn (array $art): array => [$art['url'] ?? null, ''], array_values(array_filter($pack['art'] ?? [], static fn (array $art): bool => ($art['type'] ?? '') === 'screenshot')))),
         ];
     }
 

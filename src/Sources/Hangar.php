@@ -6,6 +6,7 @@ namespace MinecraftContent\Sources;
 
 use MinecraftContent\Content\ContentType;
 use MinecraftContent\Platform\Platform;
+use MinecraftContent\Support\Text;
 
 /**
  * PaperMC's plugin repository.
@@ -14,7 +15,7 @@ final class Hangar implements Source
 {
     private const string API = 'https://hangar.papermc.io/api/v1';
 
-    private const array SORTS = ['relevance' => '-downloads', 'downloads' => '-downloads', 'updated' => '-updated', 'newest' => '-newest'];
+    private const array SORTS = ['relevance' => '-downloads', 'downloads' => '-downloads', 'updated' => '-updated', 'newest' => '-newest', 'follows' => '-stars'];
 
     public function name(): string
     {
@@ -88,6 +89,28 @@ final class Hangar implements Source
         }, $result['result'] ?? []));
     }
 
+    public function details(string $project): array
+    {
+        $data = Api::get(self::API.'/projects/'.rawurlencode($project), ttl: 3600);
+        $links = [];
+
+        foreach ($data['settings']['links'] ?? [] as $group) {
+            foreach ($group['links'] ?? [] as $link) {
+                $links[(string) ($link['name'] ?? 'Link')] = $link['url'] ?? null;
+            }
+        }
+
+        return [
+            'description' => Text::plain(Api::text(self::API.'/pages/main/'.rawurlencode($project), ttl: 3600) ?: (string) ($data['description'] ?? '')),
+            'followers' => (int) ($data['stats']['stars'] ?? 0),
+            'updated' => $data['lastUpdated'] ?? null,
+            'license' => $data['settings']['license']['name'] ?? null,
+            'categories' => array_values(array_filter([$data['category'] ?? null], is_string(...))),
+            'links' => Text::links($links),
+            'gallery' => [],
+        ];
+    }
+
     public function project(string|array $project): array
     {
         $data = is_array($project) ? $project : Api::get(self::API.'/projects/'.rawurlencode($project), ttl: 3600);
@@ -103,6 +126,7 @@ final class Hangar implements Source
             'description' => (string) ($data['description'] ?? ''),
             'icon' => $data['avatarUrl'] ?? null,
             'downloads' => (int) ($data['stats']['downloads'] ?? 0),
+            'followers' => (int) ($data['stats']['stars'] ?? 0),
             'url' => "https://hangar.papermc.io/{$owner}/{$slug}",
         ];
     }

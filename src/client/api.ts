@@ -2,7 +2,7 @@ import { http } from '@pterodactyl/sdk';
 
 export type ContentType = 'plugin' | 'mod' | 'datapack' | 'resourcepack' | 'modpack';
 export type SourceName = 'modrinth' | 'hangar' | 'spiget' | 'curseforge' | 'ftb';
-export type Sort = 'relevance' | 'downloads' | 'updated' | 'newest';
+export type Sort = 'relevance' | 'downloads' | 'updated' | 'newest' | 'follows';
 
 export interface Platform {
     software: string;
@@ -43,7 +43,18 @@ export interface Project {
     description: string;
     icon: string | null;
     downloads: number;
+    followers?: number | null;
     url: string;
+}
+
+export interface ProjectDetails {
+    description: string;
+    followers: number | null;
+    updated: string | null;
+    license: string | null;
+    categories: string[];
+    links: { label: string; url: string }[];
+    gallery: { url: string; title: string }[];
 }
 
 export interface Version {
@@ -112,6 +123,7 @@ export const keys = {
         ['minecraft-content', server, 'search', type, source, query, sort, page] as const,
     versions: (server: string, type: ContentType, source: string, project: string) =>
         ['minecraft-content', server, 'versions', type, source, project] as const,
+    details: (server: string, source: string, project: string) => ['minecraft-content', server, 'details', source, project] as const,
     installed: (server: string, type: ContentType) => ['minecraft-content', server, 'installed', type] as const,
     updates: (server: string, type: ContentType) => ['minecraft-content', server, 'updates', type] as const,
     software: (server: string, ...path: string[]) => ['minecraft-content', server, 'software', ...path] as const,
@@ -126,6 +138,8 @@ export const setPlatform = async (server: string, software: string | null, minec
 
 export const search = (server: string, type: ContentType, source: string, query: string, sort: Sort, page: number) =>
     get<{ total: number; projects: Project[] }>(`${base(server)}/search`, { type, source, query, sort, page });
+
+export const getDetails = (server: string, source: string, project: string) => get<ProjectDetails>(`${base(server)}/details`, { source, project });
 
 export const getVersions = (server: string, type: ContentType, source: string, project: string) =>
     get<{ versions: Version[] }>(`${base(server)}/versions`, { type, source, project });

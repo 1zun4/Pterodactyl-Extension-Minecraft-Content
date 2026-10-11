@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use MinecraftContent\Content\ContentType;
 use MinecraftContent\Platform\Platform;
+use MinecraftContent\Support\Text;
 
 /**
  * SpigotMC resources through Spiget. Only free resources hosted on SpigotMC itself can be installed,
@@ -17,9 +18,9 @@ final class Spiget implements Source
 {
     private const string API = 'https://api.spiget.org/v2';
 
-    private const string FIELDS = 'id,name,tag,external,premium,file,icon,downloads,testedVersions,releaseDate,updateDate';
+    private const string FIELDS = 'id,name,tag,external,premium,file,icon,downloads,likes,testedVersions,releaseDate,updateDate';
 
-    private const array SORTS = ['relevance' => '-downloads', 'downloads' => '-downloads', 'updated' => '-updateDate', 'newest' => '-releaseDate'];
+    private const array SORTS = ['relevance' => '-downloads', 'downloads' => '-downloads', 'updated' => '-updateDate', 'newest' => '-releaseDate', 'follows' => '-likes'];
 
     private const array UNITS = ['KB' => 1024, 'MB' => 1024 * 1024, 'GB' => 1024 * 1024 * 1024];
 
@@ -78,6 +79,21 @@ final class Spiget implements Source
         ]];
     }
 
+    public function details(string $project): array
+    {
+        $data = Api::get(self::API.'/resources/'.(int) $project, ['fields' => 'description,likes,sourceCodeLink,donationLink,updateDate'], ttl: 3600);
+
+        return [
+            'description' => Text::plain((string) base64_decode((string) ($data['description'] ?? ''), true)),
+            'followers' => (int) ($data['likes'] ?? 0),
+            'updated' => isset($data['updateDate']) ? date(DATE_ATOM, (int) $data['updateDate']) : null,
+            'license' => null,
+            'categories' => [],
+            'links' => Text::links(['Source code' => $data['sourceCodeLink'] ?? null, 'Donate' => $data['donationLink'] ?? null]),
+            'gallery' => [],
+        ];
+    }
+
     public function project(string|array $project): array
     {
         $data = is_array($project) ? $project : Api::get(self::API.'/resources/'.(int) $project, ttl: 3600);
@@ -92,6 +108,7 @@ final class Spiget implements Source
             'description' => html_entity_decode((string) ($data['tag'] ?? '')),
             'icon' => $icon === '' ? null : "https://www.spigotmc.org/{$icon}",
             'downloads' => (int) ($data['downloads'] ?? 0),
+            'followers' => (int) ($data['likes'] ?? 0),
             'url' => 'https://www.spigotmc.org/resources/'.(int) ($data['id'] ?? 0),
         ];
     }

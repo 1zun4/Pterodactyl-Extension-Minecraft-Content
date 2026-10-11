@@ -27,6 +27,18 @@ final class Api
         return self::cached('GET', $url, $query, $headers, $ttl);
     }
 
+    /** A plain text body, or an empty string when there is none. */
+    public static function text(string $url, int $ttl = 600): string
+    {
+        return Cache::remember('ext:mcc:api:text:'.sha1($url), $ttl, static function () use ($url): string {
+            try {
+                return mb_substr(Http::withUserAgent(self::USER_AGENT)->timeout(15)->connectTimeout(5)->get($url)->throw()->body(), 0, 200_000);
+            } catch (RequestException|ConnectionException) {
+                return '';
+            }
+        });
+    }
+
     /**
      * @param  array<array-key, mixed>  $body
      * @param  array<string, string>  $headers

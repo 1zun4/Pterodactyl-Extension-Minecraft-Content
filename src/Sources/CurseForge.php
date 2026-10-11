@@ -6,6 +6,7 @@ namespace MinecraftContent\Sources;
 
 use MinecraftContent\Content\ContentType;
 use MinecraftContent\Platform\Platform;
+use MinecraftContent\Support\Text;
 use Pterodactyl\Services\Extensions\ExtensionSettingsRegistry;
 use RuntimeException;
 
@@ -24,7 +25,7 @@ final readonly class CurseForge implements Source
 
     private const array LOADERS = ['forge' => 1, 'fabric' => 4, 'quilt' => 5, 'neoforge' => 6];
 
-    private const array SORTS = ['relevance' => 2, 'downloads' => 6, 'updated' => 3, 'newest' => 11];
+    private const array SORTS = ['relevance' => 2, 'downloads' => 6, 'updated' => 3, 'newest' => 11, 'follows' => 2];
 
     private const array RELEASE_TYPES = [1 => 'release', 2 => 'beta', 3 => 'alpha'];
 
@@ -121,6 +122,21 @@ final readonly class CurseForge implements Source
     public function project(string $project): array
     {
         return $this->normalizeProject($this->get('/mods/'.(int) $project)['data'] ?? []);
+    }
+
+    public function details(string $project): array
+    {
+        $data = $this->get('/mods/'.(int) $project)['data'] ?? [];
+
+        return [
+            'description' => Text::plain((string) ($this->get('/mods/'.(int) $project.'/description')['data'] ?? $data['summary'] ?? '')),
+            'followers' => null,
+            'updated' => $data['dateModified'] ?? null,
+            'license' => null,
+            'categories' => array_values(array_filter(array_column($data['categories'] ?? [], 'name'), is_string(...))),
+            'links' => Text::links(['Source code' => $data['links']['sourceUrl'] ?? null, 'Issues' => $data['links']['issuesUrl'] ?? null, 'Wiki' => $data['links']['wikiUrl'] ?? null]),
+            'gallery' => Text::gallery(array_map(static fn (array $image): array => [$image['url'] ?? null, $image['title'] ?? ''], $data['screenshots'] ?? [])),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -226,6 +242,7 @@ final readonly class CurseForge implements Source
             'description' => (string) ($mod['summary'] ?? ''),
             'icon' => $mod['logo']['thumbnailUrl'] ?? null,
             'downloads' => (int) ($mod['downloadCount'] ?? 0),
+            'followers' => null,
             'url' => (string) ($mod['links']['websiteUrl'] ?? ''),
         ];
     }

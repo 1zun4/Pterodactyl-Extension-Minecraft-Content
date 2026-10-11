@@ -6,12 +6,13 @@ namespace MinecraftContent\Sources;
 
 use MinecraftContent\Content\ContentType;
 use MinecraftContent\Platform\Platform;
+use MinecraftContent\Support\Text;
 
 final class Modrinth implements Source
 {
     private const string API = 'https://api.modrinth.com/v2';
 
-    private const array SORTS = ['relevance' => 'relevance', 'downloads' => 'downloads', 'updated' => 'updated', 'newest' => 'newest'];
+    private const array SORTS = ['relevance' => 'relevance', 'downloads' => 'downloads', 'updated' => 'updated', 'newest' => 'newest', 'follows' => 'follows'];
 
     public function name(): string
     {
@@ -59,8 +60,24 @@ final class Modrinth implements Source
                 'description' => (string) ($hit['description'] ?? ''),
                 'icon' => $hit['icon_url'] ?? null,
                 'downloads' => (int) ($hit['downloads'] ?? 0),
+                'followers' => (int) ($hit['follows'] ?? 0),
                 'url' => "https://modrinth.com/{$type->value}/".($hit['slug'] ?? $hit['project_id']),
             ], $result['hits'] ?? []),
+        ];
+    }
+
+    public function details(string $project): array
+    {
+        $data = Api::get(self::API.'/project/'.rawurlencode($project), ttl: 3600);
+
+        return [
+            'description' => Text::plain((string) ($data['body'] ?? '')),
+            'followers' => (int) ($data['followers'] ?? 0),
+            'updated' => $data['updated'] ?? null,
+            'license' => $data['license']['name'] ?? $data['license']['id'] ?? null,
+            'categories' => array_values(array_filter($data['categories'] ?? [], is_string(...))),
+            'links' => Text::links(['Source code' => $data['source_url'] ?? null, 'Issues' => $data['issues_url'] ?? null, 'Wiki' => $data['wiki_url'] ?? null, 'Discord' => $data['discord_url'] ?? null]),
+            'gallery' => Text::gallery(array_map(static fn (array $image): array => [$image['url'] ?? null, $image['title'] ?? ''], $data['gallery'] ?? [])),
         ];
     }
 

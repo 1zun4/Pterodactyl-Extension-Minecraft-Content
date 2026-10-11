@@ -15,6 +15,9 @@ export function formatBytes(bytes: number): string {
     return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }
 
+/** What each source calls the people who follow a project. */
+export const FOLLOWERS: Record<string, string> = { modrinth: 'followers', hangar: 'stars', spiget: 'likes' };
+
 export const SOURCE_NAMES: Record<string, string> = { modrinth: 'Modrinth', hangar: 'Hangar', spiget: 'SpigotMC', curseforge: 'CurseForge', ftb: 'FTB' };
 
 export const SOFTWARE_NAMES: Record<string, string> = {

@@ -82,7 +82,7 @@ final class ContentController extends Controller
         $data = $request->validate([
             'source' => ['required', Rule::in(['modrinth', 'hangar', 'spiget', 'curseforge', 'ftb'])],
             'query' => ['nullable', 'string', 'max:100'],
-            'sort' => ['nullable', Rule::in(['relevance', 'downloads', 'updated', 'newest'])],
+            'sort' => ['nullable', Rule::in(['relevance', 'downloads', 'updated', 'newest', 'follows'])],
             'page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ]);
 
@@ -93,6 +93,18 @@ final class ContentController extends Controller
             (string) ($data['sort'] ?? 'relevance'),
             (int) ($data['page'] ?? 1),
         ));
+    }
+
+    public function details(Request $request, Server $server): JsonResponse
+    {
+        $this->authorize($request, $server, 'read');
+
+        $data = $request->validate([
+            'source' => ['required', Rule::in(['modrinth', 'hangar', 'spiget', 'curseforge', 'ftb'])],
+            'project' => ['required', 'string', 'regex:'.self::PROJECT],
+        ]);
+
+        return $this->attempt(fn (): array => $this->sources->get($data['source'])->details($data['project']));
     }
 
     public function versions(Request $request, Server $server): JsonResponse

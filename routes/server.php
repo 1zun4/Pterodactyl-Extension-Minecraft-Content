@@ -14,6 +14,7 @@ Route::put('/detect', [ContentController::class, 'override']);
 Route::delete('/job', [ContentController::class, 'cancel']);
 Route::get('/search', [ContentController::class, 'search']);
 Route::get('/versions', [ContentController::class, 'versions']);
+Route::get('/details', [ContentController::class, 'details']);
 
 Route::get('/installed', [InstalledController::class, 'index']);
 Route::post('/installed', [InstalledController::class, 'store']);

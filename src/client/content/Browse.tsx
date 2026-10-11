@@ -3,9 +3,10 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Button, Input, Pagination, Select, Spinner, httpErrorToHuman } from '@pterodactyl/sdk';
 import { keys, search, type ContentType, type Project, type SourceName, type Sort } from '../api';
 import { useServerIds } from '../hooks';
-import { SOURCE_NAMES, formatDownloads } from '../lib/format';
+import { FOLLOWERS, SOURCE_NAMES, formatDownloads } from '../lib/format';
 import Pill from '../components/Pill';
 import ProjectIcon from '../components/ProjectIcon';
+import ProjectDialog from './ProjectDialog';
 
 interface Props {
     type: ContentType;
@@ -19,6 +20,7 @@ const SORTS: { value: Sort; label: string }[] = [
     { value: 'downloads', label: 'Downloads' },
     { value: 'updated', label: 'Recently updated' },
     { value: 'newest', label: 'Newest' },
+    { value: 'follows', label: 'Most followed' },
 ];
 
 export default function Browse({ type, sources, installed, actions }: Props) {
@@ -28,6 +30,7 @@ export default function Browse({ type, sources, installed, actions }: Props) {
     const [query, setQuery] = useState('');
     const [sort, setSort] = useState<Sort>('relevance');
     const [page, setPage] = useState(1);
+    const [open, setOpen] = useState<Project | null>(null);
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -79,7 +82,7 @@ export default function Browse({ type, sources, installed, actions }: Props) {
                     {({ items }) => (
                         <div className={`mcc:grid mcc:gap-3 mcc:lg:grid-cols-2 ${results.isPlaceholderData ? 'mcc:opacity-60' : ''}`}>
                             {items.map((project) => (
-                                <ProjectCard key={`${project.source}:${project.id}`} project={project} installed={installed.has(project.id)}>
+                                <ProjectCard key={`${project.source}:${project.id}`} project={project} installed={installed.has(project.id)} onOpen={() => setOpen(project)}>
                                     {actions(project)}
                                 </ProjectCard>
                             ))}
@@ -87,24 +90,30 @@ export default function Browse({ type, sources, installed, actions }: Props) {
                     )}
                 </Pagination>
             )}
+            <ProjectDialog
+                project={open}
+                onClose={() => setOpen(null)}
+                actions={open && <span className='mcc:contents' onClickCapture={() => setTimeout(() => setOpen(null))}>{actions(open)}</span>}
+            />
         </div>
     );
 }
 
-function ProjectCard({ project, installed, children }: { project: Project; installed: boolean; children: ReactNode }) {
+function ProjectCard({ project, installed, onOpen, children }: { project: Project; installed: boolean; onOpen: () => void; children: ReactNode }) {
     return (
         <div className='mcc:flex mcc:gap-3 mcc:rounded-sm mcc:bg-card mcc:p-3 mcc:shadow-md'>
             <ProjectIcon src={project.icon} name={project.name} />
             <div className='mcc:min-w-0 mcc:flex-1'>
                 <div className='mcc:flex mcc:items-center mcc:gap-2'>
-                    <a href={project.url} target='_blank' rel='noreferrer' className='mcc:truncate mcc:font-medium mcc:text-foreground mcc:hover:underline'>
+                    <button type='button' onClick={onOpen} className='mcc:truncate mcc:text-left mcc:font-medium mcc:text-foreground mcc:hover:underline'>
                         {project.name}
-                    </a>
+                    </button>
                     {installed && <Pill tone='success'>Installed</Pill>}
                 </div>
                 <p className='mcc:truncate mcc:text-xs mcc:text-muted-foreground'>
                     {project.author && `by ${project.author} · `}
                     {formatDownloads(project.downloads)} downloads
+                    {project.followers != null && FOLLOWERS[project.source] && ` · ${formatDownloads(project.followers)} ${FOLLOWERS[project.source]}`}
                 </p>
                 <p className='mcc:mt-1 mcc:line-clamp-2 mcc:text-sm mcc:text-muted-foreground'>{project.description}</p>
             </div>

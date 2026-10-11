@@ -10,9 +10,10 @@ use MinecraftContent\Platform\Platform;
 /**
  * A place content is downloaded from. Projects and versions are plain arrays shared by every source:
  *
- * project: source, id, slug, name, author, description, icon, downloads, url
+ * project: source, id, slug, name, author, description, icon, downloads, followers (null when unknown), url
  * version: source, project, id, name, number, type (release|beta|alpha), game_versions, loaders, published,
  *          file {url, name, size, sha1} or null when the author does not allow third-party downloads
+ * details: description (plain text), followers, updated, license, categories, links {label, url}, gallery {url, title}
  */
 interface Source
 {
@@ -28,4 +29,7 @@ interface Source
 
     /** @return array<string, mixed> */
     public function project(string $project): array;
+
+    /** @return array<string, mixed> */
+    public function details(string $project): array;
 }
