@@ -543,7 +543,7 @@ final readonly class Steps
             $url = $file['downloads'][0] ?? null;
 
             if ($path === null || ! is_string($url)) {
-                $plan['warnings'][] = 'Some files of the pack were skipped.';
+                $plan['skipped'][] = basename((string) ($file['path'] ?? '')) ?: 'a file without a name';
 
                 continue;
             }
@@ -590,7 +590,7 @@ final readonly class Steps
             foreach (array_chunk($ids, 50) as $chunk) {
                 foreach ($this->sources->curseForge->files($chunk) as $version) {
                     if ($version['file'] === null || self::safePath('mods/'.$version['file']['name']) === null) {
-                        $plan['warnings'][] = 'Some mods do not allow third-party downloads and were skipped.';
+                        $plan['skipped'][] = $version['name'];
 
                         continue;
                     }

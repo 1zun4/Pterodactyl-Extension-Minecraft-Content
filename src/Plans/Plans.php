@@ -103,6 +103,13 @@ final readonly class Plans
     /** @param array<string, mixed> $plan */
     public function finish(array $plan, Server $server, ?string $error = null): void
     {
+        $skipped = array_values(array_unique($plan['skipped'] ?? []));
+
+        if ($skipped !== []) {
+            $more = count($skipped) - 8;
+            $plan['warnings'][] = 'Not downloaded, add these yourself: '.implode(', ', array_slice($skipped, 0, 8)).($more > 0 ? " and {$more} more" : '').'.';
+        }
+
         $warnings = $plan['warnings'] === [] ? '' : ' '.implode(' ', array_unique($plan['warnings']));
         $message = $error === null ? "{$plan['label']} finished.{$warnings}" : "{$plan['label']} failed: {$error}";
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ServerContentBlock, ServerError, Spinner, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
+import { Alert, Button, ServerContentBlock, ServerError, Spinner, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
 import { cancelJob, type ContentType, type Detection } from '../api';
 import { useDetection, useJob, useServerIds } from '../hooks';
 import { SOFTWARE_NAMES, softwareIcon } from '../lib/format';
@@ -18,7 +18,7 @@ const TITLES: Record<Tab, string> = { plugin: 'Plugins', mod: 'Mods', datapack: 
 
 export default function ContentScreen({ title }: { title: string }) {
     const detection = useDetection();
-    const progress = useJob(detection.data?.job);
+    const job = useJob(detection.data?.job);
 
     if (detection.isError) {
         return <ServerError title='Could not read the server' message={httpErrorToHuman(detection.error)} onRetry={() => detection.refetch()} />;
@@ -26,12 +26,12 @@ export default function ContentScreen({ title }: { title: string }) {
 
     return (
         <ServerContentBlock title={title}>
-            {detection.data ? <Content detection={detection.data} running={progress.data?.status === 'running' || (!!detection.data.job && !progress.data)} progress={progress.data} /> : <Spinner centered size={Spinner.Size.LARGE} />}
+            {detection.data ? <Content detection={detection.data} running={job.progress?.status === 'running' || (!!detection.data.job && !job.progress)} job={job} /> : <Spinner centered size={Spinner.Size.LARGE} />}
         </ServerContentBlock>
     );
 }
 
-function Content({ detection, running, progress }: { detection: Detection; running: boolean; progress: ReturnType<typeof useJob>['data'] }) {
+function Content({ detection, running, job: { progress, notice, dismiss } }: { detection: Detection; running: boolean; job: ReturnType<typeof useJob> }) {
     const { identifier } = useServerIds();
     const canChange = useServerPermission('ext.minecraft-content.version');
     const canCancel = useServerPermission(['ext.minecraft-content.version', 'ext.minecraft-content.modpacks', 'ext.minecraft-content.worlds'], true);
@@ -66,6 +66,17 @@ function Content({ detection, running, progress }: { detection: Detection; runni
                     progress={progress}
                     onCancel={canCancel ? () => cancelJob(identifier).then(() => toast.info('Stopping after the current step...')) : undefined}
                 />
+            )}
+
+            {notice && (
+                <Alert type='warning'>
+                    <div className='mcc:flex mcc:items-start mcc:justify-between mcc:gap-4'>
+                        <span>{notice}</span>
+                        <Button.Text size='xsmall' onClick={dismiss}>
+                            Dismiss
+                        </Button.Text>
+                    </div>
+                </Alert>
             )}
 
             <Tabs active={tab} onChange={setTab} tabs={tabs.map((id) => ({ id, label: TITLES[id] }))} />
