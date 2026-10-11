@@ -168,7 +168,7 @@ final readonly class Installer
         }
 
         foreach ($items as $item) {
-            if (! in_array($item['source'], ['hangar', 'curseforge'], true)) {
+            if (! in_array($item['source'], ['hangar', 'spiget', 'curseforge'], true)) {
                 continue;
             }
 

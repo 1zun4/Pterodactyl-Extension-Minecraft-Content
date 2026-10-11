@@ -80,7 +80,7 @@ final class ContentController extends Controller
         $type = $this->type($request);
 
         $data = $request->validate([
-            'source' => ['required', Rule::in(['modrinth', 'hangar', 'curseforge', 'ftb'])],
+            'source' => ['required', Rule::in(['modrinth', 'hangar', 'spiget', 'curseforge', 'ftb'])],
             'query' => ['nullable', 'string', 'max:100'],
             'sort' => ['nullable', Rule::in(['relevance', 'downloads', 'updated', 'newest'])],
             'page' => ['nullable', 'integer', 'min:1', 'max:500'],
@@ -101,7 +101,7 @@ final class ContentController extends Controller
         $type = $this->type($request);
 
         $data = $request->validate([
-            'source' => ['required', Rule::in(['modrinth', 'hangar', 'curseforge', 'ftb'])],
+            'source' => ['required', Rule::in(['modrinth', 'hangar', 'spiget', 'curseforge', 'ftb'])],
             'project' => ['required', 'string', 'regex:'.self::PROJECT],
         ]);
 

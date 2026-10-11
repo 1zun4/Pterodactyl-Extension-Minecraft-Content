@@ -1,7 +1,7 @@
 import { http } from '@pterodactyl/sdk';
 
 export type ContentType = 'plugin' | 'mod' | 'datapack' | 'resourcepack' | 'modpack';
-export type SourceName = 'modrinth' | 'hangar' | 'curseforge' | 'ftb';
+export type SourceName = 'modrinth' | 'hangar' | 'spiget' | 'curseforge' | 'ftb';
 export type Sort = 'relevance' | 'downloads' | 'updated' | 'newest';
 
 export interface Platform {

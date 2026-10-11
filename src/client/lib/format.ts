@@ -15,7 +15,7 @@ export function formatBytes(bytes: number): string {
     return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }
 
-export const SOURCE_NAMES: Record<string, string> = { modrinth: 'Modrinth', hangar: 'Hangar', curseforge: 'CurseForge', ftb: 'FTB' };
+export const SOURCE_NAMES: Record<string, string> = { modrinth: 'Modrinth', hangar: 'Hangar', spiget: 'SpigotMC', curseforge: 'CurseForge', ftb: 'FTB' };
 
 export const SOFTWARE_NAMES: Record<string, string> = {
     vanilla: 'Vanilla',

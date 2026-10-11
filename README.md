@@ -19,7 +19,7 @@ Plugin servers get a **Plugins** tab, modded and vanilla servers a **Mods** tab.
 
 ## Features
 
-- **Plugins and mods** from Modrinth, Hangar and CurseForge, filtered for the server's software and version. Datapacks and resource packs too.
+- **Plugins and mods** from Modrinth, Hangar, SpigotMC and CurseForge, filtered for the server's software and version. Datapacks and resource packs too.
 - **Updates**: one click per file or all at once, and new server builds with their changelog. Files you uploaded yourself are recognised by their hash.
 - **Modpacks** from Modrinth, CurseForge and FTB, with backup and the right server software. Switch versions or uninstall without leftovers.
 - **Worlds**: create, switch and delete worlds, reset the Nether or End, and install maps from a link, an upload or CurseForge.

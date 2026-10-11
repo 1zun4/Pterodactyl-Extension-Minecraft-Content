@@ -15,6 +15,7 @@ final readonly class Sources
         public Hangar $hangar,
         public CurseForge $curseForge,
         public Ftb $ftb,
+        public Spiget $spiget,
     ) {}
 
     public function get(string $name): Source
@@ -24,6 +25,7 @@ final readonly class Sources
             'hangar' => $this->hangar,
             'curseforge' => $this->curseForge,
             'ftb' => $this->ftb,
+            'spiget' => $this->spiget,
             default => throw new InvalidArgumentException("Unknown source \"{$name}\"."),
         };
     }
@@ -33,7 +35,7 @@ final readonly class Sources
     {
         return array_values(array_map(
             static fn (Source $source): string => $source->name(),
-            array_filter([$this->modrinth, $this->hangar, $this->curseForge, $this->ftb], static fn (Source $source): bool => $source->supports($type, $platform)),
+            array_filter([$this->modrinth, $this->hangar, $this->spiget, $this->curseForge, $this->ftb], static fn (Source $source): bool => $source->supports($type, $platform)),
         ));
     }
 }

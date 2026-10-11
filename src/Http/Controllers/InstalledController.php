@@ -41,7 +41,7 @@ final class InstalledController extends Controller
         abort_if($type === ContentType::Modpack, 422, 'Modpacks are installed from the Modpacks tab.');
 
         $data = $request->validate([
-            'source' => ['required', Rule::in(['modrinth', 'hangar', 'curseforge'])],
+            'source' => ['required', Rule::in(['modrinth', 'hangar', 'spiget', 'curseforge'])],
             'project' => ['required', 'string', 'regex:'.self::PROJECT],
             'version' => ['nullable', 'string', 'regex:'.self::VERSION],
         ]);
