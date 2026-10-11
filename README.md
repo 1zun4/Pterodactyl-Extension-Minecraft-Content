@@ -1,9 +1,9 @@
 # Minecraft Content for Pterodactyl
 
-[![Release](https://img.shields.io/github/v/release/1zun4/Pterodactyl-Extension-Minecraft-Content?style=flat-square)](https://github.com/1zun4/Pterodactyl-Extension-Minecraft-Content/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/1zun4/Pterodactyl-Extension-Minecraft-Content/total?style=flat-square)](https://github.com/1zun4/Pterodactyl-Extension-Minecraft-Content/releases)
+[![Release](https://img.shields.io/github/v/release/CCBlueX/Pterodactyl-Extension-Minecraft-Content?style=flat-square)](https://github.com/CCBlueX/Pterodactyl-Extension-Minecraft-Content/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/CCBlueX/Pterodactyl-Extension-Minecraft-Content/total?style=flat-square)](https://github.com/CCBlueX/Pterodactyl-Extension-Minecraft-Content/releases)
 [![Pterodactyl](https://img.shields.io/badge/Pterodactyl-2.0-0e4688?style=flat-square)](https://pterodactyl.io)
-[![License](https://img.shields.io/github/license/1zun4/Pterodactyl-Extension-Minecraft-Content?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/github/license/CCBlueX/Pterodactyl-Extension-Minecraft-Content?style=flat-square)](LICENSE)
 
 Plugins, mods, modpacks and server versions for your Minecraft servers, in one tab.
 
@@ -11,7 +11,7 @@ Plugins, mods, modpacks and server versions for your Minecraft servers, in one t
 
 ## Install
 
-1. Download `minecraft-content-<version>.pteroext` from the [latest release](https://github.com/1zun4/Pterodactyl-Extension-Minecraft-Content/releases/latest).
+1. Download `minecraft-content-<version>.pteroext` from the [latest release](https://github.com/CCBlueX/Pterodactyl-Extension-Minecraft-Content/releases/latest).
 2. Open **Admin → Extensions**, click **Install** and pick the file.
 3. Enable it and reload the panel.
 

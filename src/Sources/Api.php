@@ -15,7 +15,7 @@ use RuntimeException;
  */
 final class Api
 {
-    public const string USER_AGENT = '1zun4/Pterodactyl-Extension-Minecraft-Content (github.com/1zun4/Pterodactyl-Extension-Minecraft-Content)';
+    public const string USER_AGENT = 'CCBlueX/Pterodactyl-Extension-Minecraft-Content (github.com/CCBlueX/Pterodactyl-Extension-Minecraft-Content)';
 
     /**
      * @param  array<string, mixed>  $query
