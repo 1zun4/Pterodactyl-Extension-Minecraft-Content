@@ -16,6 +16,7 @@ vi.mock('../api', async (importOriginal) => ({
         ],
         software: ['paper', 'fabric'],
         modpack: null,
+        cleanup: 'smart',
         resource_pack: null,
         job: null,
     }),

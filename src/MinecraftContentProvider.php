@@ -34,6 +34,14 @@ class MinecraftContentProvider extends ExtensionProvider
                 ->label('CurseForge API key')
                 ->help('Turns on CurseForge. Get a key at console.curseforge.com.')
                 ->secret(),
+            ExtensionSettingDefinition::make('modpack_cleanup', 'modpack_cleanup', 'smart', ['required', 'string', 'in:smart,full,keep'])
+                ->label('Before a modpack installs')
+                ->help('What users see preselected. Smart removes the previous pack\'s files, or the mod folders when no pack is known.')
+                ->field('select', [
+                    ['value' => 'smart', 'label' => 'Smart clean-up'],
+                    ['value' => 'full', 'label' => 'Remove mods, config and similar folders'],
+                    ['value' => 'keep', 'label' => 'Keep all files'],
+                ]),
         ]));
     }
 }

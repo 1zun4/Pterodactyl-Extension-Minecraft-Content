@@ -42,6 +42,7 @@ Subusers get a **Minecraft content** group in the server's **Users** tab: browse
 | Setting | What it does |
 | --- | --- |
 | CurseForge API key | Turns on CurseForge. Get a key at [console.curseforge.com](https://console.curseforge.com). |
+| Before a modpack installs | Preselected clean-up: only the previous pack's files (smart), all mod folders, or nothing. |
 
 Modpacks and version changes run in the background, so the panel's queue worker has to run. The Docker image runs it already.
 

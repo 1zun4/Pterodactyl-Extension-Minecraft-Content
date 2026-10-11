@@ -66,9 +66,9 @@ final readonly class Planner
     }
 
     /**
-     * The files of the previous pack go first, so a version switch leaves no stale mods behind.
+     * Smart clean-up removes exactly the previous pack's files, or the usual mod folders when no pack is known.
      *
-     * @param  array{wipe: bool, backup: bool, start: bool}  $options
+     * @param  array{cleanup: string, backup: bool, start: bool}  $options
      * @param  list<string>  $previous
      * @return array{label: string, steps: list<array<string, mixed>>}
      */
@@ -81,8 +81,11 @@ final readonly class Planner
         $steps = array_values(array_filter([
             ['op' => 'stop'],
             $options['backup'] ? ['op' => 'backup', 'name' => "Before {$details['name']}"] : null,
-            $options['wipe'] ? ['op' => 'clear', 'paths' => self::PACK_FOLDERS] : null,
-            ...$this->removal($previous),
+            ...match ($options['cleanup']) {
+                'full' => [['op' => 'clear', 'paths' => self::PACK_FOLDERS], ...$this->removal($previous)],
+                'smart' => $previous === [] ? [['op' => 'clear', 'paths' => self::PACK_FOLDERS]] : $this->removal($previous),
+                default => [],
+            },
             ['op' => 'clear', 'paths' => [self::WORK]],
             ['op' => 'mkdir', 'path' => self::WORK],
         ]));

@@ -83,7 +83,7 @@ function Content({ detection, running, job: { progress, notice, dismiss } }: { d
 
             {(tab === 'plugin' || tab === 'mod' || tab === 'datapack') && <CodeTab key={tab} type={tab} sources={sources(tab)} />}
             {tab === 'resourcepack' && <ResourcePackTab current={detection.resource_pack} sources={sources('resourcepack')} />}
-            {tab === 'modpack' && <ModpacksTab current={detection.modpack} sources={sources('modpack')} busy={running} />}
+            {tab === 'modpack' && <ModpacksTab current={detection.modpack} sources={sources('modpack')} busy={running} cleanup={detection.cleanup} />}
             {tab === 'worlds' && <WorldsTab busy={running} />}
             {tab === 'version' && <VersionTab platform={platform} busy={running} />}
 

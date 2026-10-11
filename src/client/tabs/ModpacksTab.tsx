@@ -1,23 +1,28 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Dialog, Switch, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
-import { installModpack, uninstallModpack, type Project, type SourceName, type Tracked, type Version } from '../api';
+import { Alert, Button, Dialog, Label, Select, Switch, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
+import { installModpack, uninstallModpack, type Cleanup, type Project, type SourceName, type Tracked, type Version } from '../api';
 import { formatDate } from '../lib/format';
 import { useServerIds } from '../hooks';
 import Browse from '../content/Browse';
 import VersionsDialog from '../content/VersionsDialog';
 import CurrentCard from '../components/CurrentCard';
 
-export default function ModpacksTab({ current, sources, busy }: { current: Tracked | null; sources: SourceName[]; busy: boolean }) {
+export default function ModpacksTab({ current, sources, busy, cleanup }: { current: Tracked | null; sources: SourceName[]; busy: boolean; cleanup: Cleanup }) {
     const { identifier } = useServerIds();
     const queryClient = useQueryClient();
     const canInstall = useServerPermission('ext.minecraft-content.modpacks');
     const [project, setProject] = useState<Project | null>(null);
     const [choice, setChoice] = useState<{ project: Project; version: Version } | null>(null);
-    const [options, setOptions] = useState({ backup: true, wipe: true, start: true });
+    const tracked = typeof current?.file_count === 'number';
+    const [options, setOptions] = useState({ backup: true, cleanup: tracked || cleanup === 'keep' ? cleanup : ('full' as Cleanup), start: true });
     const [removing, setRemoving] = useState(false);
     const [removalBackup, setRemovalBackup] = useState(true);
-    const tracked = typeof current?.file_count === 'number';
+    const cleanups = [
+        ...(tracked ? [{ value: 'smart', label: `Remove only the ${current!.file_count} files of ${current!.name}` }] : []),
+        { value: 'full', label: 'Remove mods, config and similar folders' },
+        { value: 'keep', label: 'Keep all files' },
+    ];
     const onError = (error: unknown) => toast.error(httpErrorToHuman(error));
     const refresh = () => queryClient.invalidateQueries({ queryKey: ['minecraft-content', identifier] });
 
@@ -78,12 +83,12 @@ export default function ModpacksTab({ current, sources, busy }: { current: Track
                         <p className='mcc:text-sm mcc:text-muted-foreground'>
                             {choice.version.name} for {[choice.version.loaders.join(', '), choice.version.game_versions.join(', ')].filter(Boolean).join(' ')}
                         </p>
-                        <Alert type='warning'>
-                            The server stops, and its server software is replaced by the one the modpack needs. Worlds are kept.
-                            {tracked && ` The ${current!.file_count} files of ${current!.name} are removed first.`}
-                        </Alert>
+                        <Alert type='warning'>The server stops, and its server software is replaced by the one the modpack needs. Worlds are kept.</Alert>
+                        <div>
+                            <Label htmlFor='mcc-cleanup'>Before installing</Label>
+                            <Select id='mcc-cleanup' value={options.cleanup} onChange={(value) => setOptions((current) => ({ ...current, cleanup: value as Cleanup }))} options={cleanups} />
+                        </div>
                         <Switch label='Back up first' description='Needs a free backup slot.' checked={options.backup} onChange={(backup) => setOptions((current) => ({ ...current, backup }))} />
-                        <Switch label='Remove old mods and configs' description='Deletes mods, config, libraries and similar folders first.' checked={options.wipe} onChange={(wipe) => setOptions((current) => ({ ...current, wipe }))} />
                         <Switch label='Start the server when done' checked={options.start} onChange={(start) => setOptions((current) => ({ ...current, start }))} />
                     </div>
                 )}

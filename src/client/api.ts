@@ -2,6 +2,7 @@ import { http } from '@pterodactyl/sdk';
 
 export type ContentType = 'plugin' | 'mod' | 'datapack' | 'resourcepack' | 'modpack';
 export type SourceName = 'modrinth' | 'hangar' | 'spiget' | 'curseforge' | 'ftb';
+export type Cleanup = 'smart' | 'full' | 'keep';
 export type Sort = 'relevance' | 'downloads' | 'updated' | 'newest' | 'follows';
 
 export interface Platform {
@@ -31,6 +32,7 @@ export interface Detection {
     software: string[];
     modpack: Tracked | null;
     resource_pack: Tracked | null;
+    cleanup: Cleanup;
     job: string | null;
 }
 
@@ -189,7 +191,7 @@ export const changeSoftware = async (server: string, input: { type: string; vers
 
 export const installModpack = async (
     server: string,
-    input: { source: string; project: string; version: string; wipe: boolean; backup: boolean; start: boolean }
+    input: { source: string; project: string; version: string; cleanup: Cleanup; backup: boolean; start: boolean }
 ) => (await http.post<{ job: string }>(`${base(server)}/modpacks`, input)).data;
 
 export const uninstallModpack = async (server: string, backup: boolean) => (await http.delete<{ job: string }>(`${base(server)}/modpacks`, { data: { backup } })).data;

@@ -15,6 +15,7 @@ use MinecraftContent\Platform\Detector;
 use MinecraftContent\Platform\Platform;
 use MinecraftContent\Sources\Sources;
 use Pterodactyl\Models\Server;
+use Pterodactyl\Services\Extensions\ExtensionSettingsRegistry;
 
 final class ContentController extends Controller
 {
@@ -23,6 +24,7 @@ final class ContentController extends Controller
         private readonly Sources $sources,
         private readonly Installed $installed,
         private readonly Plans $plans,
+        private readonly ExtensionSettingsRegistry $settings,
     ) {}
 
     public function detect(Request $request, Server $server): JsonResponse
@@ -43,6 +45,7 @@ final class ContentController extends Controller
                 'file_count' => isset($installed['modpack']['files']) ? count($installed['modpack']['files']) : null,
             ],
             'resource_pack' => $installed['resource_pack'],
+            'cleanup' => (string) ($this->settings->get('minecraft-content')?->get('modpack_cleanup') ?? 'smart'),
             'job' => $this->plans->active($server),
         ]);
     }

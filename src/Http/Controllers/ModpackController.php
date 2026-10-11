@@ -32,14 +32,14 @@ final class ModpackController extends Controller
             'source' => ['required', Rule::in(['modrinth', 'curseforge', 'ftb'])],
             'project' => ['required', 'string', 'regex:'.self::PROJECT],
             'version' => ['required', 'string', 'regex:'.self::VERSION],
-            'wipe' => ['required', 'boolean'],
+            'cleanup' => ['required', Rule::in(['smart', 'full', 'keep'])],
             'backup' => ['required', 'boolean'],
             'start' => ['required', 'boolean'],
         ]);
 
         return $this->attempt(function () use ($request, $server, $data): array {
             $plan = $this->planner->modpack($this->detector->detect($server), $data['source'], $data['project'], $data['version'], [
-                'wipe' => (bool) $data['wipe'],
+                'cleanup' => (string) $data['cleanup'],
                 'backup' => (bool) $data['backup'],
                 'start' => (bool) $data['start'],
             ], $this->installed->all($server)['modpack']['files'] ?? []);
