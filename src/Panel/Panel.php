@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MinecraftContent\Panel;
 
+use Illuminate\Support\Facades\DB;
 use Pterodactyl\Contracts\Backups\InitiatesBackups;
 use Pterodactyl\Contracts\Files\CreatesDirectories;
 use Pterodactyl\Contracts\Files\DecompressesFiles;
@@ -13,12 +14,14 @@ use Pterodactyl\Contracts\Files\PullsFiles;
 use Pterodactyl\Contracts\Files\ReadsFileContents;
 use Pterodactyl\Contracts\Files\RenamesFiles;
 use Pterodactyl\Contracts\Files\WritesFileContents;
+use Pterodactyl\Contracts\Servers\ChangesServerEgg;
 use Pterodactyl\Contracts\Servers\SendsServerPower;
 use Pterodactyl\Contracts\Servers\UpdatesServerStartup;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Facades\Daemon;
 use Pterodactyl\Models\Backup;
+use Pterodactyl\Models\Egg;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\User;
 
@@ -42,6 +45,7 @@ final class Panel
         private readonly SendsServerPower $power,
         private readonly UpdatesServerStartup $startup,
         private readonly InitiatesBackups $backups,
+        private readonly ChangesServerEgg $eggs,
     ) {}
 
     public function read(Server $server, string $path, int $maxBytes): ?string
@@ -202,10 +206,41 @@ final class Panel
         return $values;
     }
 
+    /**
+     * The first Minecraft egg with one of these names, compared case-insensitively.
+     *
+     * @param  list<string>  $names
+     */
+    public function eggNamed(array $names): ?Egg
+    {
+        $eggs = Egg::query()->whereIn(DB::raw('LOWER(name)'), array_map(mb_strtolower(...), $names))->get()
+            ->filter(static fn (Egg $egg): bool => in_array('eula', (array) $egg->features, true));
+
+        foreach ($names as $name) {
+            if ($egg = $eggs->first(static fn (Egg $egg): bool => mb_strtolower($egg->name) === mb_strtolower($name))) {
+                return $egg;
+            }
+        }
+
+        return null;
+    }
+
+    /** Keeps the variables both eggs share; the startup command and image become the new egg's. */
+    public function changeEgg(Server $server, Egg $egg): void
+    {
+        $old = $server->egg->name;
+        $this->eggs->change($server, $egg, true);
+        $server->refresh();
+
+        Activity::event('server:startup.edit')->subject($server)->property(['variable' => 'Egg', 'old' => $old, 'new' => $egg->name])->log();
+    }
+
     /** @param array<string, string> $environment Only variables the egg defines are kept. */
     public function updateStartup(Server $server, array $environment, ?string $image = null): void
     {
-        $known = array_intersect_key($environment, $this->variables($server));
+        // The panel validates every required variable, so unchanged ones are sent along with their current values.
+        $current = $this->variables($server);
+        $known = array_merge($current, array_intersect_key($environment, $current));
         $images = array_values((array) $server->egg->docker_images);
 
         $this->startup->update($server, array_filter([

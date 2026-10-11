@@ -23,7 +23,7 @@ Plugin servers get a **Plugins** tab, modded and vanilla servers a **Mods** tab.
 - **Updates**: one click per file or all at once. Files you uploaded yourself are recognised by their hash.
 - **Datapacks and resource packs**: datapacks go into the world, resource packs into `server.properties`.
 - **Modpacks** from Modrinth, CurseForge and FTB, with backup, clean-up and the right server software.
-- **Server version**: switch between Paper, Purpur, Fabric, Forge, NeoForge, Velocity and more, with the matching Java image.
+- **Server version**: switch between Paper, Purpur, Fabric, Forge, NeoForge, Velocity and more, with the matching Java image. The server moves to the matching egg, so Startup and Reinstall stay correct.
 
 ![Installed mods](docs/screenshots/installed.png)
 

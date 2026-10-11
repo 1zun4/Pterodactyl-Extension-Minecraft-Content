@@ -30,6 +30,21 @@ final readonly class Steps
 
     private const int STOP_DEADLINE = 120;
 
+    /** Eggs made for each MCJars software type, tried in order. */
+    private const array EGGS = [
+        'VANILLA' => ['Vanilla Minecraft', 'Vanilla'],
+        'PAPER' => ['Paper'],
+        'PURPUR' => ['Purpur'],
+        'FOLIA' => ['Folia'],
+        'FABRIC' => ['Fabric'],
+        'QUILT' => ['Quilt'],
+        'FORGE' => ['Forge Minecraft', 'Forge Enhanced', 'Forge'],
+        'NEOFORGE' => ['NeoForge'],
+        'VELOCITY' => ['Velocity'],
+        'BUNGEECORD' => ['BungeeCord'],
+        'WATERFALL' => ['Waterfall'],
+    ];
+
     private const array LOADERS = [
         'fabric-loader' => 'FABRIC',
         'quilt-loader' => 'QUILT',
@@ -59,6 +74,7 @@ final readonly class Steps
             'decompress' => 'Unpacked '.basename((string) $step['file']).'.',
             'move', 'unwrap' => 'Copied files into place.',
             'variables' => 'Updated the startup variables.',
+            'egg' => 'Switched to the matching egg.',
             'loader' => 'Picked the server software.',
             'mrpack', 'curseforge' => 'Read the modpack.',
             default => 'Working...',
@@ -91,6 +107,7 @@ final readonly class Steps
             'move' => $this->move($server, $step),
             'unwrap' => $this->unwrap($server, $step),
             'variables' => $this->variables($server, $step),
+            'egg' => $this->egg($server, $step),
             'loader' => $this->loader($step),
             'mrpack' => $this->mrpack($server, $step, $plan),
             'curseforge' => $this->curseForge($server, $step, $plan),
@@ -355,6 +372,30 @@ final readonly class Steps
     }
 
     /**
+     * Moves the server to the egg made for its new software, so the startup command, a reinstall and
+     * the egg shown on the Startup page match what is installed. Eggs that cannot start a plain
+     * server.jar (NeoForge's starts from unix_args.txt only) are skipped and the server keeps its egg.
+     *
+     * @param  array<string, mixed>  $step
+     */
+    private function egg(Server $server, array $step): StepResult
+    {
+        $type = (string) $step['type'];
+        $egg = $this->panel->eggNamed(self::EGGS[$type] ?? []);
+
+        if ($egg !== null && $egg->id !== $server->egg_id && preg_match('/\{\{SERVER_JARFILE\}\}|server\.jar/', (string) $egg->startup) === 1) {
+            $this->panel->changeEgg($server, $egg);
+        }
+
+        // MCJars' Forge and NeoForge launcher starts whatever an existing unix_args.txt points at.
+        if (in_array($type, ['FORGE', 'NEOFORGE'], true) && $this->panel->exists($server, 'unix_args.txt')) {
+            $this->panel->delete($server, '/', ['unix_args.txt']);
+        }
+
+        return StepResult::done();
+    }
+
+    /**
      * Expands into the downloads MCJars lists for a server software build.
      *
      * @param  array<string, mixed>  $step
@@ -390,9 +431,10 @@ final readonly class Steps
             }
         }
 
+        $steps[] = ['op' => 'egg', 'type' => $type];
         $steps[] = [
             'op' => 'variables',
-            'environment' => ['SERVER_JARFILE' => 'server.jar', 'MINECRAFT_VERSION' => $step['minecraft'], 'BUILD_NUMBER' => 'latest'],
+            'environment' => ['SERVER_JARFILE' => 'server.jar', 'MINECRAFT_VERSION' => $step['minecraft'], 'MC_VERSION' => $step['minecraft'], 'VANILLA_VERSION' => $step['minecraft'], 'BUILD_NUMBER' => 'latest'],
             'java' => $this->mcjars->java($type, (string) $step['minecraft']),
         ];
 
