@@ -43,19 +43,19 @@ function Content({ detection, running, job: { progress, notice, dismiss } }: { d
     const { platform } = detection;
 
     return (
-        <div className='mcc:grid mcc:gap-4'>
+        <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4'>
             <div className='mcc:flex mcc:items-center mcc:gap-3 mcc:rounded-sm mcc:bg-card mcc:p-3 mcc:shadow-md'>
-                <img alt='' src={softwareIcon(platform.software)} className='mcc:h-9 mcc:w-9' />
+                <img alt='' src={softwareIcon(platform.software)} className='mcc:h-9 mcc:w-9 mcc:shrink-0' />
                 <div className='mcc:min-w-0 mcc:flex-1'>
-                    <h2 className='mcc:font-header mcc:text-sm mcc:font-semibold mcc:uppercase mcc:tracking-wide mcc:text-foreground'>
+                    <h2 className='mcc:font-header mcc:text-sm mcc:font-semibold mcc:uppercase mcc:tracking-wide mcc:break-words mcc:text-foreground'>
                         {SOFTWARE_NAMES[platform.software] ?? platform.software} {platform.minecraft ?? ''}
                     </h2>
-                    <p className='mcc:text-xs mcc:text-muted-foreground'>
+                    <p className='mcc:text-xs mcc:break-words mcc:text-muted-foreground'>
                         {platform.detected ? 'Detected from the server files.' : 'Set by hand.'} Search results only show content for this server.
                     </p>
                 </div>
                 {canChange && (
-                    <button type='button' className='mcc:text-sm mcc:text-muted-foreground mcc:hover:text-foreground' onClick={() => setEditing(true)}>
+                    <button type='button' className='mcc:shrink-0 mcc:text-sm mcc:text-muted-foreground mcc:hover:text-foreground' onClick={() => setEditing(true)}>
                         Change
                     </button>
                 )}

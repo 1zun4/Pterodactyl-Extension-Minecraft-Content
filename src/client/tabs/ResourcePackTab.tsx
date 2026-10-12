@@ -21,7 +21,7 @@ export default function ResourcePackTab({ current, sources }: { current: Tracked
     });
 
     return (
-        <div className='mcc:grid mcc:gap-4'>
+        <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4'>
             <CurrentCard
                 title='Server resource pack'
                 empty='Players join without a server resource pack.'

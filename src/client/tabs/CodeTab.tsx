@@ -21,7 +21,7 @@ export default function CodeTab({ type, sources }: { type: ContentType; sources:
     const projects = new Set((installed.data?.files ?? []).map((file) => file.project ?? ''));
 
     return (
-        <div className='mcc:grid mcc:gap-4'>
+        <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4'>
             <Tabs
                 active={view}
                 onChange={setView}

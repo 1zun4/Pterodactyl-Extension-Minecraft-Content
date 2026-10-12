@@ -34,7 +34,7 @@ export default function ModpacksTab({ current, sources, busy, cleanup }: { curre
     const removal = useMutation({ mutationFn: () => uninstallModpack(identifier, removalBackup), onSuccess: () => (setRemoving(false), refresh()), onError });
 
     return (
-        <div className='mcc:grid mcc:gap-4'>
+        <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4'>
             <CurrentCard
                 title='Installed modpack'
                 empty='No modpack was installed from the panel.'
@@ -43,7 +43,7 @@ export default function ModpacksTab({ current, sources, busy, cleanup }: { curre
                 action={
                     current &&
                     canInstall && (
-                        <div className='mcc:flex mcc:shrink-0 mcc:gap-2'>
+                        <>
                             <Button.Text size='xsmall' disabled={busy} onClick={() => setProject(asProject(current))}>
                                 Switch version
                             </Button.Text>
@@ -52,7 +52,7 @@ export default function ModpacksTab({ current, sources, busy, cleanup }: { curre
                                     Uninstall
                                 </Button.Danger>
                             )}
-                        </div>
+                        </>
                     )
                 }
             />

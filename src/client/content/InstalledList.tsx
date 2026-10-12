@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Dialog, Switch, Table, Tooltip, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
-import { getInstalled, getUpdates, keys, remove, scan, toggle, update, type ContentType, type InstalledFile } from '../api';
+import { getInstalled, getUpdates, keys, remove, scan, toggle, update, type ContentType, type InstalledFile, type Version } from '../api';
 import { useServerIds } from '../hooks';
 import { SOURCE_NAMES, formatBytes } from '../lib/format';
+import { MEDIUM, useMediaQuery } from '../lib/media';
 import Pill from '../components/Pill';
 import ProjectIcon from '../components/ProjectIcon';
 
@@ -12,6 +13,7 @@ export default function InstalledList({ type }: { type: ContentType }) {
     const queryClient = useQueryClient();
     const canInstall = useServerPermission('ext.minecraft-content.install');
     const [removing, setRemoving] = useState<InstalledFile | null>(null);
+    const wide = useMediaQuery(MEDIUM);
 
     const files = useQuery({ queryKey: keys.installed(identifier, type), queryFn: () => getInstalled(identifier, type) });
     const updates = useQuery({ queryKey: keys.updates(identifier, type), queryFn: () => getUpdates(identifier, type), enabled: false, retry: false });
@@ -68,10 +70,28 @@ export default function InstalledList({ type }: { type: ContentType }) {
 
     const available = updates.data?.updates ?? {};
     const outdated = Object.keys(available);
-    const unknown = (files.data?.files ?? []).filter((file) => !file.tracked).length;
+    const rows = files.data?.files ?? [];
+    const unknown = rows.filter((file) => !file.tracked).length;
+    const empty = files.isLoading ? 'Loading...' : 'Nothing installed yet.';
+
+    const toggleOf = (file: InstalledFile) => (
+        <Switch aria-label={`Enable ${file.name}`} checked={file.enabled} disabled={!canInstall || switching.isPending} onChange={() => switching.mutate(file)} />
+    );
+    const actionsOf = (file: InstalledFile) => (
+        <>
+            {available[file.path] && (
+                <Button size='small' disabled={updating.isPending} onClick={() => updating.mutate([file.path])}>
+                    Update
+                </Button>
+            )}
+            <Button.Danger size='small' onClick={() => setRemoving(file)}>
+                Remove
+            </Button.Danger>
+        </>
+    );
 
     return (
-        <div className='mcc:grid mcc:gap-3'>
+        <div className='mcc:grid mcc:grid-cols-1 mcc:gap-3'>
             <div className='mcc:flex mcc:flex-wrap mcc:items-center mcc:justify-end mcc:gap-2'>
                 <Button.Text size='small' isLoading={updates.isFetching} onClick={() => updates.refetch()}>
                     Check for updates
@@ -90,62 +110,39 @@ export default function InstalledList({ type }: { type: ContentType }) {
                 )}
             </div>
             {updates.isError && <p className='mcc:text-sm mcc:text-destructive'>{httpErrorToHuman(updates.error)}</p>}
-            <Table
-                rows={files.data?.files ?? []}
-                keyOf={(file) => file.path}
-                isFetching={files.isFetching}
-                emptyState={files.isLoading ? 'Loading...' : 'Nothing installed yet.'}
-                columns={[
-                    {
-                        id: 'name',
-                        label: 'Name',
-                        cell: (file) => (
+            {wide ? (
+                <Table
+                    rows={rows}
+                    keyOf={(file) => file.path}
+                    isFetching={files.isFetching}
+                    emptyState={empty}
+                    columns={[
+                        { id: 'name', label: 'Name', cell: (file) => <FileName file={file} /> },
+                        { id: 'version', label: 'Version', cell: (file) => <FileVersion file={file} update={available[file.path]} /> },
+                        { id: 'enabled', label: 'Enabled', cell: toggleOf },
+                        { id: 'actions', label: '', cell: (file) => canInstall && <div className='mcc:flex mcc:justify-end mcc:gap-2'>{actionsOf(file)}</div> },
+                    ]}
+                />
+            ) : rows.length === 0 ? (
+                <p className='mcc:rounded-sm mcc:bg-card mcc:p-4 mcc:text-center mcc:text-sm mcc:text-muted-foreground mcc:shadow-md'>{empty}</p>
+            ) : (
+                <ul className={`mcc:grid mcc:grid-cols-1 mcc:gap-2 ${files.isFetching ? 'mcc:opacity-60' : ''}`}>
+                    {rows.map((file) => (
+                        <li key={file.path} className='mcc:rounded-sm mcc:bg-card mcc:p-3 mcc:shadow-md'>
                             <div className='mcc:flex mcc:items-center mcc:gap-3'>
-                                <ProjectIcon src={file.icon} name={file.name} size={32} />
-                                <div className='mcc:min-w-0'>
-                                    <p className='mcc:truncate mcc:text-foreground'>{file.url ? <a href={file.url} target='_blank' rel='noreferrer' className='mcc:hover:underline'>{file.name}</a> : file.name}</p>
-                                    <p className='mcc:truncate mcc:text-xs mcc:text-muted-foreground'>{file.file}</p>
+                                <div className='mcc:min-w-0 mcc:flex-1'>
+                                    <FileName file={file} />
                                 </div>
+                                {toggleOf(file)}
                             </div>
-                        ),
-                    },
-                    {
-                        id: 'version',
-                        label: 'Version',
-                        cell: (file) => (
-                            <div className='mcc:flex mcc:flex-wrap mcc:items-center mcc:gap-1'>
-                                <span>{file.version_name ?? formatBytes(file.size)}</span>
-                                {file.source ? <Pill>{SOURCE_NAMES[file.source]}</Pill> : <Pill tone='warning'>Unknown</Pill>}
-                                {available[file.path] && <Pill tone='info'>{available[file.path].number || available[file.path].name} available</Pill>}
+                            <div className='mcc:mt-2'>
+                                <FileVersion file={file} update={available[file.path]} />
                             </div>
-                        ),
-                    },
-                    {
-                        id: 'enabled',
-                        label: 'Enabled',
-                        cell: (file) => (
-                            <Switch aria-label={`Enable ${file.name}`} checked={file.enabled} disabled={!canInstall || switching.isPending} onChange={() => switching.mutate(file)} />
-                        ),
-                    },
-                    {
-                        id: 'actions',
-                        label: '',
-                        cell: (file) =>
-                            canInstall && (
-                                <div className='mcc:flex mcc:justify-end mcc:gap-2'>
-                                    {available[file.path] && (
-                                        <Button size='small' disabled={updating.isPending} onClick={() => updating.mutate([file.path])}>
-                                            Update
-                                        </Button>
-                                    )}
-                                    <Button.Danger size='small' onClick={() => setRemoving(file)}>
-                                        Remove
-                                    </Button.Danger>
-                                </div>
-                            ),
-                    },
-                ]}
-            />
+                            {canInstall && <div className='mcc:mt-3 mcc:flex mcc:gap-2 mcc:*:flex-1'>{actionsOf(file)}</div>}
+                        </li>
+                    ))}
+                </ul>
+            )}
             <Dialog.Confirm
                 open={removing !== null}
                 onClose={() => setRemoving(null)}
@@ -156,6 +153,28 @@ export default function InstalledList({ type }: { type: ContentType }) {
             >
                 {removing?.file} is deleted from the server. Restart the server to unload it.
             </Dialog.Confirm>
+        </div>
+    );
+}
+
+function FileName({ file }: { file: InstalledFile }) {
+    return (
+        <div className='mcc:flex mcc:min-w-0 mcc:items-center mcc:gap-3'>
+            <ProjectIcon src={file.icon} name={file.name} size={32} />
+            <div className='mcc:min-w-0'>
+                <p className='mcc:truncate mcc:text-foreground'>{file.url ? <a href={file.url} target='_blank' rel='noreferrer' className='mcc:hover:underline'>{file.name}</a> : file.name}</p>
+                <p className='mcc:truncate mcc:text-xs mcc:text-muted-foreground'>{file.file}</p>
+            </div>
+        </div>
+    );
+}
+
+function FileVersion({ file, update }: { file: InstalledFile; update?: Version }) {
+    return (
+        <div className='mcc:flex mcc:flex-wrap mcc:items-center mcc:gap-1'>
+            <span className='mcc:min-w-0 mcc:break-words'>{file.version_name ?? formatBytes(file.size)}</span>
+            {file.source ? <Pill>{SOURCE_NAMES[file.source]}</Pill> : <Pill tone='warning'>Unknown</Pill>}
+            {update && <Pill tone='info'>{update.number || update.name} available</Pill>}
         </div>
     );
 }

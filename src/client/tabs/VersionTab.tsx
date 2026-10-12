@@ -66,9 +66,9 @@ export default function VersionTab({ platform, busy }: { platform: Platform; bus
     });
 
     return (
-        <div className='mcc:grid mcc:gap-4 mcc:lg:grid-cols-[minmax(0,1fr)_20rem]'>
-            <TitledGreyBox title='Change server software'>
-                <div className='mcc:grid mcc:gap-4 mcc:md:grid-cols-3'>
+        <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4 mcc:lg:grid-cols-[minmax(0,1fr)_20rem]'>
+            <TitledGreyBox title='Change server software' className='mcc:min-w-0'>
+                <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4 mcc:md:grid-cols-3'>
                     <div>
                         <Label htmlFor='mcc-software'>Software</Label>
                         <Select id='mcc-software' value={type} groups={groups} onChange={(value) => setType(String(value))} />
@@ -140,10 +140,10 @@ export default function VersionTab({ platform, busy }: { platform: Platform; bus
                     </div>
                 )}
             </TitledGreyBox>
-            <TitledGreyBox title='Current'>
+            <TitledGreyBox title='Current' className='mcc:min-w-0'>
                 <div className='mcc:flex mcc:items-center mcc:gap-3'>
-                    <img alt='' src={softwareIcon(platform.software)} className='mcc:h-10 mcc:w-10' />
-                    <div>
+                    <img alt='' src={softwareIcon(platform.software)} className='mcc:h-10 mcc:w-10 mcc:shrink-0' />
+                    <div className='mcc:min-w-0'>
                         <p className='mcc:text-foreground'>
                             {SOFTWARE_NAMES[platform.software] ?? platform.software} {platform.minecraft}
                         </p>

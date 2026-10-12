@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { createExtensionTestHost, createTestServer } from '@pterodactyl/sdk/testing';
 import ContentScreen from './ContentScreen';
 
@@ -35,6 +35,7 @@ afterEach(() => {
     cleanup();
     host?.dispose();
     host = undefined;
+    Reflect.deleteProperty(window, 'matchMedia');
 });
 
 function renderScreen(permissions: string[]) {
@@ -65,4 +66,24 @@ test('disables installing without the permission', async () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Installed (1)' }));
     expect(await screen.findByText('5.5.71')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+});
+
+test('lists installed files as cards on phones', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        value: (query: string) => ({ matches: false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }),
+    });
+    renderScreen(['ext.minecraft-content.read', 'ext.minecraft-content.install']);
+
+    await screen.findByText('LuckPerms');
+    for (const tablist of screen.getAllByRole('tablist')) {
+        expect(tablist.className).toContain('mcc:overflow-x-auto');
+    }
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Installed (1)' }));
+
+    const card = (await screen.findByText('5.5.71')).closest('li')!;
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(within(card).getByRole('switch', { name: 'Enable LuckPerms' })).toBeTruthy();
+    expect(within(card).getByRole('button', { name: 'Remove' })).toBeTruthy();
 });

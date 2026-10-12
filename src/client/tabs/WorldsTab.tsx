@@ -4,6 +4,7 @@ import { Alert, Button, Dialog, Input, Label, Select, Switch, Table, TitledGreyB
 import { activateWorld, createWorld, deleteWorld, getWorlds, importWorld, keys, resetDimension, searchWorlds, type World, type WorldImport, type WorldList } from '../api';
 import { useServerIds } from '../hooks';
 import { formatBytes, formatDate } from '../lib/format';
+import { MEDIUM, useMediaQuery } from '../lib/media';
 import Pill from '../components/Pill';
 import ProjectIcon from '../components/ProjectIcon';
 
@@ -22,6 +23,7 @@ export default function WorldsTab({ busy }: { busy: boolean }) {
     const { identifier } = useServerIds();
     const queryClient = useQueryClient();
     const canManage = useServerPermission('ext.minecraft-content.worlds');
+    const wide = useMediaQuery(MEDIUM);
     const worlds = useQuery({ queryKey: keys.worlds(identifier), queryFn: () => getWorlds(identifier) });
     const [restart, setRestart] = useState<string | null>(null);
     const [removing, setRemoving] = useState<World | null>(null);
@@ -30,6 +32,8 @@ export default function WorldsTab({ busy }: { busy: boolean }) {
     const update = (data: WorldList) => queryClient.setQueryData(keys.worlds(identifier), (current: WorldList | undefined) => ({ ...current, ...data }));
     const onError = (error: unknown) => toast.error(httpErrorToHuman(error));
     const running = !['offline', 'stopped'].includes(worlds.data?.state ?? 'offline');
+    const rows = worlds.data?.worlds ?? [];
+    const empty = worlds.isLoading ? 'Loading...' : worlds.isError ? httpErrorToHuman(worlds.error) : 'No worlds yet.';
 
     const activation = useMutation({ mutationFn: (name: string) => activateWorld(identifier, name), onSuccess: (data, name) => (update(data), setRestart(name)), onError });
     const removal = useMutation({ mutationFn: (name: string) => deleteWorld(identifier, name), onSuccess: (data) => (update(data), setRemoving(null)), onError });
@@ -39,77 +43,71 @@ export default function WorldsTab({ busy }: { busy: boolean }) {
         onError,
     });
 
+    const actionsOf = (world: World) =>
+        canManage &&
+        !world.pending && (
+            <>
+                {!world.active && (
+                    <Button.Text size='xsmall' disabled={activation.isPending} onClick={() => activation.mutate(world.name)}>
+                        Load
+                    </Button.Text>
+                )}
+                {world.nether && (
+                    <Button.Text size='xsmall' disabled={running} onClick={() => setResetting({ world, dimension: 'nether' })}>
+                        Reset Nether
+                    </Button.Text>
+                )}
+                {world.end && (
+                    <Button.Text size='xsmall' disabled={running} onClick={() => setResetting({ world, dimension: 'end' })}>
+                        Reset End
+                    </Button.Text>
+                )}
+                {!world.active && (
+                    <Button.Danger size='xsmall' disabled={running} onClick={() => setRemoving(world)}>
+                        Delete
+                    </Button.Danger>
+                )}
+            </>
+        );
+
     return (
-        <div className='mcc:grid mcc:gap-4 mcc:lg:grid-cols-[minmax(0,1fr)_24rem]'>
-            <div className='mcc:grid mcc:content-start mcc:gap-4'>
+        <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4 mcc:lg:grid-cols-[minmax(0,1fr)_24rem]'>
+            <div className='mcc:grid mcc:min-w-0 mcc:grid-cols-1 mcc:content-start mcc:gap-4'>
                 {restart && (
                     <Alert type='info'>
                         Restart the server to load <b>{restart}</b>.
                     </Alert>
                 )}
                 {running && canManage && <p className='mcc:text-xs mcc:text-muted-foreground'>Stop the server to delete worlds or reset their Nether and End.</p>}
-                <Table
-                    rows={worlds.data?.worlds ?? []}
-                    keyOf={(world) => world.name}
-                    isFetching={worlds.isFetching}
-                    emptyState={worlds.isLoading ? 'Loading...' : worlds.isError ? httpErrorToHuman(worlds.error) : 'No worlds yet.'}
-                    columns={[
-                        {
-                            id: 'name',
-                            label: 'World',
-                            cell: (world) => (
-                                <span className='mcc:flex mcc:flex-wrap mcc:items-center mcc:gap-2'>
-                                    <span className='mcc:text-foreground'>{world.name}</span>
-                                    {world.active && <Pill tone='success'>{world.pending ? 'Generates on next start' : 'Loaded'}</Pill>}
-                                </span>
-                            ),
-                        },
-                        {
-                            id: 'dimensions',
-                            label: 'Dimensions',
-                            cell: (world) =>
-                                world.pending ? (
-                                    '–'
-                                ) : (
-                                    <span className='mcc:flex mcc:gap-1'>
-                                        <Pill tone={world.nether ? 'info' : 'muted'}>Nether</Pill>
-                                        <Pill tone={world.end ? 'info' : 'muted'}>End</Pill>
-                                    </span>
-                                ),
-                        },
-                        { id: 'modified', label: 'Last change', cell: (world) => (world.modified ? formatDate(world.modified) : '–') },
-                        {
-                            id: 'actions',
-                            label: '',
-                            cell: (world) =>
-                                canManage &&
-                                !world.pending && (
-                                    <div className='mcc:flex mcc:flex-wrap mcc:justify-end mcc:gap-2'>
-                                        {!world.active && (
-                                            <Button.Text size='xsmall' disabled={activation.isPending} onClick={() => activation.mutate(world.name)}>
-                                                Load
-                                            </Button.Text>
-                                        )}
-                                        {world.nether && (
-                                            <Button.Text size='xsmall' disabled={running} onClick={() => setResetting({ world, dimension: 'nether' })}>
-                                                Reset Nether
-                                            </Button.Text>
-                                        )}
-                                        {world.end && (
-                                            <Button.Text size='xsmall' disabled={running} onClick={() => setResetting({ world, dimension: 'end' })}>
-                                                Reset End
-                                            </Button.Text>
-                                        )}
-                                        {!world.active && (
-                                            <Button.Danger size='xsmall' disabled={running} onClick={() => setRemoving(world)}>
-                                                Delete
-                                            </Button.Danger>
-                                        )}
-                                    </div>
-                                ),
-                        },
-                    ]}
-                />
+                {wide ? (
+                    <Table
+                        rows={rows}
+                        keyOf={(world) => world.name}
+                        isFetching={worlds.isFetching}
+                        emptyState={empty}
+                        columns={[
+                            { id: 'name', label: 'World', cell: (world) => <WorldName world={world} /> },
+                            { id: 'dimensions', label: 'Dimensions', cell: (world) => <Dimensions world={world} /> },
+                            { id: 'modified', label: 'Last change', cell: (world) => (world.modified ? formatDate(world.modified) : '–') },
+                            { id: 'actions', label: '', cell: (world) => <div className='mcc:flex mcc:flex-wrap mcc:justify-end mcc:gap-2'>{actionsOf(world)}</div> },
+                        ]}
+                    />
+                ) : rows.length === 0 ? (
+                    <p className='mcc:rounded-sm mcc:bg-card mcc:p-4 mcc:text-center mcc:text-sm mcc:text-muted-foreground mcc:shadow-md'>{empty}</p>
+                ) : (
+                    <ul className={`mcc:grid mcc:grid-cols-1 mcc:gap-2 ${worlds.isFetching ? 'mcc:opacity-60' : ''}`}>
+                        {rows.map((world) => (
+                            <li key={world.name} className='mcc:grid mcc:gap-2 mcc:rounded-sm mcc:bg-card mcc:p-3 mcc:shadow-md'>
+                                <WorldName world={world} />
+                                <div className='mcc:flex mcc:flex-wrap mcc:items-center mcc:justify-between mcc:gap-2 mcc:text-xs mcc:text-muted-foreground'>
+                                    <Dimensions world={world} />
+                                    {world.modified && <span>Changed {formatDate(world.modified)}</span>}
+                                </div>
+                                {canManage && !world.pending && <div className='mcc:mt-1 mcc:flex mcc:flex-wrap mcc:gap-2'>{actionsOf(world)}</div>}
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
             {canManage && worlds.data && <AddWorld list={worlds.data} busy={busy} onCreated={(name) => setRestart(name)} />}
 
@@ -134,6 +132,26 @@ export default function WorldsTab({ busy }: { busy: boolean }) {
                 Everything built there is deleted. The server generates a new {resetting?.dimension === 'end' ? 'End' : 'Nether'} the next time someone enters it.
             </Dialog.Confirm>
         </div>
+    );
+}
+
+function WorldName({ world }: { world: World }) {
+    return (
+        <span className='mcc:flex mcc:min-w-0 mcc:flex-wrap mcc:items-center mcc:gap-2'>
+            <span className='mcc:min-w-0 mcc:break-words mcc:text-foreground'>{world.name}</span>
+            {world.active && <Pill tone='success'>{world.pending ? 'Generates on next start' : 'Loaded'}</Pill>}
+        </span>
+    );
+}
+
+function Dimensions({ world }: { world: World }) {
+    return world.pending ? (
+        <span>–</span>
+    ) : (
+        <span className='mcc:flex mcc:gap-1'>
+            <Pill tone={world.nether ? 'info' : 'muted'}>Nether</Pill>
+            <Pill tone={world.end ? 'info' : 'muted'}>End</Pill>
+        </span>
     );
 }
 
@@ -182,8 +200,8 @@ function AddWorld({ list, busy, onCreated }: { list: WorldList; busy: boolean; o
     ];
 
     return (
-        <TitledGreyBox title='Add a world'>
-            <div className='mcc:grid mcc:gap-4'>
+        <TitledGreyBox title='Add a world' className='mcc:min-w-0'>
+            <div className='mcc:grid mcc:grid-cols-1 mcc:gap-4'>
                 <Select aria-label='How' value={mode} onChange={(value) => setMode(value as Mode)} options={modes} />
                 <div>
                     <Label htmlFor='mcc-world-name'>Folder name</Label>
@@ -253,7 +271,7 @@ function AddWorld({ list, busy, onCreated }: { list: WorldList; busy: boolean; o
                                 setSubmitted(query);
                             }}
                         >
-                            <Input aria-label='Search CurseForge worlds' placeholder='Search maps...' value={query} onChange={(event) => setQuery(event.currentTarget.value)} />
+                            <Input className='mcc:min-w-0 mcc:flex-1' aria-label='Search CurseForge worlds' placeholder='Search maps...' value={query} onChange={(event) => setQuery(event.currentTarget.value)} />
                             <Button.Text type='submit'>Search</Button.Text>
                         </form>
                         <Switch label='Load it on the next start' checked={activate} onChange={setActivate} />
