@@ -1,23 +1,28 @@
 import './styles.css';
 import { useQuery } from '@tanstack/react-query';
-import { definePterodactylExtension, type ScreenContext } from '@pterodactyl/sdk';
+import { definePterodactylExtension, usePanelLocation, type ScreenContext } from '@pterodactyl/sdk';
 import { getDetection, keys } from './api';
 
-// Plugin servers and proxies get a "Plugins" tab, modded and vanilla servers a "Mods" tab.
-function useKind(context: ScreenContext) {
+function useContentScreen(context: ScreenContext, screen: 'plugins' | 'mods') {
     const identifier = context.server?.attributes.identifier ?? '';
+    const { pathname, params } = usePanelLocation();
+    const id = params.id ?? identifier;
+    const current = pathname.replace(/\/$/, '') === `/server/${id}/${screen}`;
     const detection = useQuery({ queryKey: keys.detect(identifier), queryFn: () => getDetection(identifier), enabled: identifier !== '', staleTime: 30_000 });
+    const kind = detection.data?.platform.kind;
+    const target = kind ? (kind === 'plugins' || kind === 'proxy' ? 'plugins' : 'mods') : null;
 
-    return detection.data?.platform.kind;
+    // Keep the current route mounted while detection loads or navigation replaces it.
+    return target === screen || current;
 }
 
 export default definePterodactylExtension({
     setup({ screens }) {
         screens.register('plugins', () => import('./screens/PluginsScreen'), {
-            visible: (context) => ['plugins', 'proxy'].includes(useKind(context) ?? ''),
+            visible: (context) => useContentScreen(context, 'plugins'),
         });
         screens.register('mods', () => import('./screens/ModsScreen'), {
-            visible: (context) => ['mods', 'vanilla'].includes(useKind(context) ?? ''),
+            visible: (context) => useContentScreen(context, 'mods'),
         });
     },
 });

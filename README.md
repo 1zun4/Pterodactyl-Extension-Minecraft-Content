@@ -15,7 +15,7 @@ Plugins, mods, modpacks, worlds and server versions for your Minecraft servers, 
 2. Open **Admin → Extensions**, click **Install** and pick the file.
 3. Enable it and reload the panel.
 
-Plugin servers get a **Plugins** tab, modded and vanilla servers a **Mods** tab.
+Plugin servers get a **Plugins** tab, modded and vanilla servers a **Mods** tab. Switching server software opens the matching tab automatically.
 
 ## Features
 

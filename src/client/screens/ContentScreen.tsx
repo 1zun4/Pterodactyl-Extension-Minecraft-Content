@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Alert, Button, ServerContentBlock, ServerError, Spinner, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
+import { useEffect, useState } from 'react';
+import { Alert, Button, ServerContentBlock, ServerError, Spinner, httpErrorToHuman, toast, usePanelLocation, useServerPermission } from '@pterodactyl/sdk';
 import { cancelJob, type ContentType, type Detection } from '../api';
 import { useDetection, useJob, useServerIds } from '../hooks';
 import { SOFTWARE_NAMES, softwareIcon } from '../lib/format';
@@ -19,9 +19,26 @@ const TITLES: Record<Tab, string> = { plugin: 'Plugins', mod: 'Mods', datapack: 
 export default function ContentScreen({ title }: { title: string }) {
     const detection = useDetection();
     const job = useJob(detection.data?.job);
+    const { identifier } = useServerIds();
+    const { params } = usePanelLocation();
+    const kind = detection.data?.platform.kind;
+    const target = kind ? (kind === 'plugins' || kind === 'proxy' ? 'plugins' : 'mods') : null;
+    const current = title === 'Plugins' ? 'plugins' : 'mods';
+    const id = params.id ?? identifier;
+
+    useEffect(() => {
+        if (target && target !== current) {
+            // The panel's runtime gate can hide the old route before an SPA transition finishes.
+            window.location.replace(`/server/${encodeURIComponent(id)}/${target}`);
+        }
+    }, [target, current, id]);
 
     if (detection.isError) {
         return <ServerError title='Could not read the server' message={httpErrorToHuman(detection.error)} onRetry={() => detection.refetch()} />;
+    }
+
+    if (target && target !== current) {
+        return <Spinner centered />;
     }
 
     return (
